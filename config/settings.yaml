@@ -1,0 +1,47 @@
+llm:
+  provider: bedrock
+  # set to the Bedrock model/inference profile ID I have access to
+  model_id: "CHANGE_ME"
+  temperature: 0.2
+  max_tokens: 1024
+
+embeddings:
+  provider: bedrock_titan
+  model_id: amazon.titan-embed-text-v2:0
+  dimensions: 1024
+
+vectorstore:
+  type: chroma
+  path: data/chroma
+  collection: rubies_policies
+
+rag:
+  docs_path: rag/docs
+  chunking_mode: heading
+  top_k: 4
+  # tune later against eval questions; meaning depends on the distance metric
+  similarity_threshold: 0.35
+  max_failed_retrievals: 2
+
+session:
+  expiry_minutes: 15
+  max_failed_verifications: 3
+
+handoff:
+  max_repeated_tool_errors: 3
+
+logging:
+  tool_log_path: logs/tool_calls.jsonl
+  debug: false
+
+adapter:
+  type: http_chat
+  host: 0.0.0.0
+  port: 8000
+
+startup:
+  require_components: false  # when false, unbuilt components are reported; set true once all providers exist
+
+bank_api:
+  db_path: data/bank.db
+  store_type: sqlite

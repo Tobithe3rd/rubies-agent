@@ -1,0 +1,104 @@
+# Rubies MFB Support Agent: Architecture
+
+Capstone Project 1 (AI Engineering). Builder: Tobiloba Adeyemi. Brief: `AI_Engineering_Capstone_Project_Briefs.pdf` (project files).
+Status: architecture locked; build not started.
+
+## 1. Working agreement (read first in every chat)
+- Build one step at a time. Give one step, wait for my confirmation, then give the next.
+- Keep responses concise but complete enough to act on.
+- The main project chat is the orchestrator. Build chats stay inside their scope.
+- Do not change a locked decision without flagging it and updating this file.
+- At the end of each chat, produce a short status note (what was built, file names, deviations) to paste into section 9.
+
+### Building style (every build chat follows this)
+- I build with **opencode** as the coding agent. Each step is delivered as a ready-to-paste **opencode prompt** (in a code block), not as code for me to type.
+- Each opencode prompt must say: which files to create or edit, what to read first (e.g. `ARCHITECTURE.md`, the config files), the exact behaviour wanted, and what NOT to touch. It must respect the modularity rules in section 4 (no hardcoded choices; config and interfaces).
+- Each step ends with a short **"Check it worked"** list: commands to run and what I should see.
+- Anything I should do **myself** is marked **"YOU DO THIS"** and kept out of the opencode prompt. This includes: AWS account/credentials and Bedrock model access, editing `.env`, anything in a web console, decisions only I can make (e.g. Fleet details), running the app and reporting results, and reviewing generated code for security-sensitive parts (identity, confirmation, logging).
+- When something fails, I paste the error or opencode output back, and the chat gives a corrective prompt.
+
+## 2. System flow
+Customer -> chat adapter (Fleet-facing) -> Strands agent on Bedrock -> tool wrapper (logs every call) -> mock bank API (FastAPI + SQLite) or RAG (ChromaDB)
+
+## 3. Locked decisions
+| Part | Decision |
+|---|---|
+| Agent | Strands + Amazon Bedrock, one agent, system prompt in `prompts/` |
+| Mock bank API | FastAPI + SQLite, about 20 synthetic customers, 3 months of transactions each, audit table |
+| Identity | Phone + OTP verification creates a session token. Agent injects it from session state. Tools take no `customer_id` argument. API re-checks the token on every call |
+| Confirmation | `open_dispute` and `block_card` only propose and return a pending token. `confirm_action(token)` executes, only after a new user message arrives |
+| RAG | 6-8 docs with numbered headings; chunk by heading/section (doc title + heading prepended); Bedrock Titan v2 embeddings; ChromaDB (local). Citation = document + section |
+| No guessing | Similarity threshold, plus prompt rule: answer only from retrieved text, else say "I don't know" and offer handoff |
+| Pidgin | System prompt rules + few-shot examples; reply in the user's register; rewrite query to plain English before retrieval |
+| Handoff | Code triggers (user asks for human/manager, 2 failed retrievals, repeated tool errors, 3 failed verifications) + model judgement for upset users. Calls `handoff_to_human` with summary |
+| Logging | Tool wrapper writes JSONL (time, session, tool, inputs, result/error) + audit table in the bank API |
+| Fleet | OPEN: confirm how Fleet registers agents. Keep behind an adapter interface |
+
+## 4. Modularity rules
+1. Every choice and number lives in config, never in logic.
+2. Every swappable part sits behind a small interface; config picks the implementation via a factory.
+3. Prompts and few-shot examples are plain files.
+
+| File | Controls |
+|---|---|
+| `.env` | Secrets/environment only: AWS region and credentials, bank API URL |
+| `config/settings.yaml` | Model ID, embedding model, vector store type/path, chunking mode, similarity threshold, top-k, session expiry, handoff limits, log path, adapter, `debug` flag |
+| `config/tools.yaml` | Per tool: enabled, `requires_confirmation`, `requires_verified_session`, description |
+| `prompts/` | `system_prompt.md`, `pidgin_examples.md`, `handoff_summary.md`, `query_rewrite.md` |
+
+Swappable behind interfaces: LLM provider, embedder, vector store, data store, interface adapter.
+Debugging: `debug: true` gives verbose logs; startup prints which implementation each part loaded; config is validated at startup and fails fast with a clear message.
+
+## 5. Repo layout
+```
+rubies-agent/
+├── .env.example
+├── config/        settings.yaml, tools.yaml
+├── prompts/       *.md
+├── core/          config loader, interfaces, factories
+├── providers/     llm/, embeddings/, vectorstore/
+├── bank_api/      main.py, models.py, seed.py
+├── agent/         agent, tool wrapper, confirmation, handoff
+├── rag/           docs/, ingest
+├── adapters/      http_chat.py (Fleet adapter goes here)
+├── data/  eval/  logs/
+```
+
+## 6. Tools
+| Tool | Confirmation |
+|---|---|
+| verify_customer | No |
+| get_balance | No |
+| get_mini_statement | No |
+| get_transaction_status | No |
+| open_dispute | Yes |
+| block_card | Yes |
+| check_loan_eligibility | No |
+| get_loan_status | No |
+| handoff_to_human | No |
+| search_policy (RAG) | No |
+
+## 7. Ground rules from the brief
+Synthetic data only (naira, Nigerian names/phone formats). At least 5 Pidgin test messages. Confirm before any state change. No guessing. Handoff with summary when unsure, user upset, or user asks. Log every tool call. Customer must never reach another customer's data.
+
+## 8. Build order and chats
+| Chat | Scope |
+|---|---|
+| 1. Foundation | Repo skeleton, config loader, interfaces, factories, startup validation, `/health` |
+| 2. Bank API | FastAPI + SQLite, schema, 20 customers (incl. failed transfer, double debit, card holder, active loan), seed script, OTP/session |
+| 3. Documents and RAG | The 6-8 policy docs, chunking, Titan, ChromaDB, citations, threshold |
+| 4. Agent core | Strands agent, tool wrapper, session injection, two-step confirmation |
+| 5. Behaviour | Pidgin prompts, handoff triggers, logging |
+| 6. Fleet | Registration and adapter |
+| 7. Eval and demo | 20-30 RAG questions, 10 tool scenarios, 5 safety cases, 7 demo scenarios, README |
+
+Demo scenarios: (1) fee question with citation; (2) double debit -> verify, dispute after confirmation; (3) lost card -> verify, confirm, block; (4) N200,000 loan -> requirements + eligibility tool; (5) Pidgin "money no gree enter" -> ask reference, check status; (6) attack on neighbour's balance -> refuse, no tool call; (7) angry customer wants manager -> handoff with summary.
+
+## 9. Status log (paste a note after each chat)
+- Chat 1: not started
+- Chat 2: not started
+- Chat 3: not started
+- Chat 4: not started
+- Chat 5: not started
+- Chat 6: not started
+- Chat 7: not started

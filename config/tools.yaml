@@ -1,0 +1,59 @@
+verify_customer:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: false
+  description: "Verify a customer's identity using their phone number and one-time passcode."
+
+get_balance:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: true
+  description: "Retrieve the current account balance for the verified customer."
+
+get_mini_statement:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: true
+  description: "Retrieve a short statement of recent transactions for the verified customer."
+
+get_transaction_status:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: true
+  description: "Check the status of a specific transaction by its reference."
+
+open_dispute:
+  enabled: true
+  requires_confirmation: true
+  requires_verified_session: true
+  description: "Propose opening a dispute; requires confirmation before execution."
+
+block_card:
+  enabled: true
+  requires_confirmation: true
+  requires_verified_session: true
+  description: "Propose blocking a card; requires confirmation before execution."
+
+check_loan_eligibility:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: true
+  description: "Check whether the verified customer is eligible for a loan."
+
+get_loan_status:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: true
+  description: "Retrieve the current status of the verified customer's loan."
+
+handoff_to_human:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: false
+  description: "Initiate a handoff to a human agent with a summary of the conversation."
+
+search_policy:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: false
+  description: "Search policy documents using retrieved chunks and citations."

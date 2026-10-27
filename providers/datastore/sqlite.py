@@ -155,10 +155,15 @@ class SQLiteDataStore(DataStore):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
             summary TEXT NOT NULL,
+            reason TEXT NOT NULL DEFAULT 'other',
             status TEXT NOT NULL DEFAULT 'open',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        # Migrate an older DB that lacks the reason column.
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(handoff_tickets)").fetchall()}
+        if "reason" not in cols:
+            conn.execute("ALTER TABLE handoff_tickets ADD COLUMN reason TEXT NOT NULL DEFAULT 'other'")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_handoff_customer ON handoff_tickets(customer_id)")
         conn.execute("""
         CREATE TABLE IF NOT EXISTS pending_actions (
@@ -454,11 +459,11 @@ class SQLiteDataStore(DataStore):
         conn.commit()
         conn.close()
 
-    def create_handoff_ticket(self, customer_id_or_none: Optional[int], summary: str) -> dict:
+    def create_handoff_ticket(self, customer_id_or_none: Optional[int], summary: str, reason: str = "other") -> dict:
         conn = self._connection()
         cursor = conn.execute(
-            "INSERT INTO handoff_tickets (customer_id, summary) VALUES (?, ?)",
-            (customer_id_or_none, summary)
+            "INSERT INTO handoff_tickets (customer_id, summary, reason) VALUES (?, ?, ?)",
+            (customer_id_or_none, summary, reason)
         )
         conn.commit()
         ticket_id = cursor.lastrowid

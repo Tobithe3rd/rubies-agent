@@ -104,6 +104,8 @@ class BankAPIConfig(BaseModel):
     mini_statement_max_n: int = Field(ge=1)
     mini_statement_default_n: int = Field(ge=1)
     eligibility: EligibilityConfig
+    handoff_summary_max_chars: int = Field(ge=1)
+    handoff_reason_codes: list[str] = Field(min_length=1)
 
     @field_validator("otp_delivery")
     @classmethod

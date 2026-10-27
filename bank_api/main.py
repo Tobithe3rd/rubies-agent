@@ -45,6 +45,12 @@ class EligibilityBody(BaseModel):
     requested_amount_naira: int = Field(ge=1)
 
 
+class HandoffBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(max_length=10000)
+    reason: str = Field(min_length=1, max_length=64)
+
+
 def create_app(config_dir: str = "config") -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -171,5 +177,18 @@ def create_app(config_dir: str = "config") -> FastAPI:
     @app.get("/loans/status")
     def loan_status(customer_id: int = Depends(require_session)):
         return app.state.bank.get_loan_status(customer_id)
+
+    # --- handoff (optional auth) ---
+
+    @app.post("/handoff")
+    def handoff(body: HandoffBody, authorization: Optional[str] = Header(default=None)):
+        token = _bearer(authorization)
+        customer_id = app.state.auth.resolve_session(token) if token else None
+        result = app.state.bank.create_handoff(customer_id, body.summary, body.reason)
+        if result.get("error") == "invalid_reason":
+            return JSONResponse(status_code=400, content={"error": "invalid_reason"})
+        if result.get("error") == "empty_summary":
+            return JSONResponse(status_code=400, content={"error": "empty_summary"})
+        return result
 
     return app

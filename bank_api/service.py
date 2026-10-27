@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import datetime
 from typing import Callable, Optional
@@ -15,6 +16,20 @@ def _sha256_hex(value: str) -> str:
 
 def _naira(kobo: int) -> float:
     return kobo / 100
+
+
+# Anything that looks like an OTP, a bearer token, or a long opaque token.
+_BEARER_RE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]+")
+_LONG_DIGITS_RE = re.compile(r"\b\d{6,}\b")
+# Long tokens: 24+ chars of token-ish alphabet that also contain a digit.
+_LONG_TOKEN_RE = re.compile(r"\b(?=[A-Za-z0-9_\-]{24,}\b)(?=[A-Za-z0-9_\-]*\d)[A-Za-z0-9_\-]{24,}\b")
+
+
+def redact_sensitive(text: str) -> str:
+    text = _BEARER_RE.sub("[redacted]", text)
+    text = _LONG_DIGITS_RE.sub("[redacted]", text)
+    text = _LONG_TOKEN_RE.sub("[redacted]", text)
+    return text
 
 
 class BankService:
@@ -33,6 +48,8 @@ class BankService:
         self.mini_max = bank.mini_statement_max_n
         self.mini_default = bank.mini_statement_default_n
         self.elig = bank.eligibility
+        self.handoff_summary_max_chars = bank.handoff_summary_max_chars
+        self.handoff_reason_codes = list(bank.handoff_reason_codes)
         self._clock = clock or datetime.datetime.now
 
     def _now(self) -> datetime.datetime:
@@ -297,3 +314,23 @@ class BankService:
             "next_repayment_kobo": loan["next_repayment_kobo"],
             "next_repayment_naira": _naira(loan["next_repayment_kobo"]),
         }
+
+    # --- handoff ---
+
+    def create_handoff(self, customer_id_or_none: Optional[int], summary: str, reason: str) -> dict:
+        if reason not in self.handoff_reason_codes:
+            self._audit(customer_id_or_none, "create_handoff", {"reason": reason}, "invalid_reason")
+            return {"error": "invalid_reason"}
+        cleaned = redact_sensitive((summary or "").strip())[: self.handoff_summary_max_chars]
+        if not cleaned:
+            self._audit(customer_id_or_none, "create_handoff", {"reason": reason}, "empty_summary")
+            return {"error": "empty_summary"}
+        ticket = self.ds.create_handoff_ticket(customer_id_or_none, cleaned, reason)
+        # Audit holds only length and reason, never the summary text.
+        self._audit(
+            customer_id_or_none, "create_handoff",
+            {"reason": reason, "summary_length": len(cleaned),
+             "customer_attached": customer_id_or_none is not None},
+            "created",
+        )
+        return {"ticket_id": ticket["id"], "status": ticket["status"]}

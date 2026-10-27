@@ -212,7 +212,7 @@ class DataStore(abc.ABC):
 
     # Handoff
     @abc.abstractmethod
-    def create_handoff_ticket(self, customer_id_or_none: Optional[int], summary: str) -> dict:
+    def create_handoff_ticket(self, customer_id_or_none: Optional[int], summary: str, reason: str = "other") -> dict:
         ...
 
     @abc.abstractmethod

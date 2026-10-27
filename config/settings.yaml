@@ -64,3 +64,5 @@ bank_api:
     max_loan_to_inflow_multiple: 3
     kyc_tiers_allowed: [tier1, tier2, tier3]
     requested_amount_max_naira: 500000
+  handoff_summary_max_chars: 1000
+  handoff_reason_codes: [user_requested, upset_user, low_confidence, repeated_errors, failed_verification, other]

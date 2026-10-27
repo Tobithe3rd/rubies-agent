@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 
@@ -17,8 +17,15 @@ class HealthStatus:
 class Chunk:
     id: str
     text: str
-    metadata: dict
+    metadata: dict = field(default_factory=dict)
     # metadata must contain at least doc and section keys when used with RAG
+    doc_id: str = ""
+    doc_title: str = ""
+    file: str = ""
+    section_number: int = 0
+    section_heading: str = ""
+    citation: str = ""
+    word_count: int = 0
 
 
 @dataclass

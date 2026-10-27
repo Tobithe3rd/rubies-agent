@@ -28,6 +28,7 @@ class EmbeddingsConfig(BaseModel):
     provider: str = "bedrock_titan"
     model_id: str
     dimensions: int = Field(ge=1)
+    normalize: bool = True
 
 
 class VectorstoreConfig(BaseModel):
@@ -37,10 +38,27 @@ class VectorstoreConfig(BaseModel):
     collection: str
 
 
+class ChunkingConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    mode: str = "heading"
+    max_words: int = Field(ge=1)
+
+    @field_validator("mode")
+    @classmethod
+    def known_mode(cls, v: str) -> str:
+        allowed = ["heading"]
+        if v not in allowed:
+            raise ValueError(f"chunking.mode must be one of: {', '.join(allowed)}")
+        return v
+
+
 class RAGConfig(BaseModel):
     model_config = {"extra": "forbid"}
     docs_path: str
     chunking_mode: str
+    chunking: ChunkingConfig
+    ignore_prefixes: list[str] = Field(default_factory=lambda: ["_"])
+    chunks_path: str
     top_k: int = Field(ge=1)
     similarity_threshold: float = Field(ge=0.0, le=1.0)
     max_failed_retrievals: int = Field(ge=0)

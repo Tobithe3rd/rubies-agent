@@ -9,6 +9,7 @@ embeddings:
   provider: bedrock_titan
   model_id: amazon.titan-embed-text-v2:0
   dimensions: 1024
+  normalize: true
 
 vectorstore:
   type: chroma
@@ -18,6 +19,11 @@ vectorstore:
 rag:
   docs_path: rag/docs
   chunking_mode: heading
+  chunking:
+    mode: heading
+    max_words: 450
+  ignore_prefixes: ["_"]
+  chunks_path: data/rag_chunks.jsonl
   top_k: 4
   # tune later against eval questions; meaning depends on the distance metric
   similarity_threshold: 0.35

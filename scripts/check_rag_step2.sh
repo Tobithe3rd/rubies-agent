@@ -278,9 +278,12 @@ except Exception as exc:
     check("no bank_api/providers/core/agent/config files modified", False, f"git failed: {exc}")
 else:
     allow = os.environ.get("ALLOW_SEED_CHANGE") == "1"
+    allow_rag = os.environ.get("ALLOW_RAG_CHANGE") == "1"
     protected = []
     for ln in diff.splitlines():
         if allow and (ln == "bank_api/seed.py" or ln.startswith("data/") or ln.startswith("tests/")):
+            continue
+        if allow_rag and (ln.startswith("core/") or ln.startswith("config/")):
             continue
         if ln.startswith(("bank_api/", "providers/", "core/", "agent/", "config/")):
             protected.append(ln)

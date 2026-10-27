@@ -1,0 +1,770 @@
+{
+  "questions": [
+    {
+      "question": "How much does it cost to transfer ₦20,000 to another bank?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-01#2",
+      "expected_heading_contains": "transfer fee",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#3",
+          "score": 0.5178
+        },
+        {
+          "id": "RUB-DOC-01#2",
+          "score": 0.4438
+        },
+        {
+          "id": "RUB-DOC-03#1",
+          "score": 0.2994
+        },
+        {
+          "id": "RUB-DOC-06#7",
+          "score": 0.2699
+        }
+      ],
+      "top1_id": "RUB-DOC-08#3",
+      "top1_score": 0.5178,
+      "expected_rank": 2
+    },
+    {
+      "question": "Is there a fee to send money to another Rubies account?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-01#2",
+      "expected_heading_contains": "transfer fee",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#3",
+          "score": 0.7899
+        },
+        {
+          "id": "RUB-DOC-01#2",
+          "score": 0.7563
+        },
+        {
+          "id": "RUB-DOC-01#7",
+          "score": 0.7555
+        },
+        {
+          "id": "RUB-DOC-03#1",
+          "score": 0.7244
+        }
+      ],
+      "top1_id": "RUB-DOC-08#3",
+      "top1_score": 0.7899,
+      "expected_rank": 2
+    },
+    {
+      "question": "How much is an SMS alert?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-01#5",
+      "expected_heading_contains": "sms",
+      "top_results": [
+        {
+          "id": "RUB-DOC-01#5",
+          "score": 0.4681
+        },
+        {
+          "id": "RUB-DOC-08#3",
+          "score": 0.2969
+        },
+        {
+          "id": "RUB-DOC-01#3",
+          "score": 0.1905
+        },
+        {
+          "id": "RUB-DOC-05#7",
+          "score": 0.1662
+        }
+      ],
+      "top1_id": "RUB-DOC-01#5",
+      "top1_score": 0.4681,
+      "expected_rank": 1
+    },
+    {
+      "question": "How much do I pay for a replacement debit card?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-01#4",
+      "expected_heading_contains": "card",
+      "top_results": [
+        {
+          "id": "RUB-DOC-01#4",
+          "score": 0.5012
+        },
+        {
+          "id": "RUB-DOC-08#5",
+          "score": 0.3299
+        },
+        {
+          "id": "RUB-DOC-05#3",
+          "score": 0.3057
+        },
+        {
+          "id": "RUB-DOC-08#3",
+          "score": 0.2493
+        }
+      ],
+      "top1_id": "RUB-DOC-01#4",
+      "top1_score": 0.5012,
+      "expected_rank": 1
+    },
+    {
+      "question": "My transfer failed but I was debited. When will I get my money back?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-03#4",
+      "expected_heading_contains": "reversal",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#4",
+          "score": 0.5569
+        },
+        {
+          "id": "RUB-DOC-03#3",
+          "score": 0.5556
+        },
+        {
+          "id": "RUB-DOC-03#5",
+          "score": 0.5317
+        },
+        {
+          "id": "RUB-DOC-03#4",
+          "score": 0.4441
+        }
+      ],
+      "top1_id": "RUB-DOC-08#4",
+      "top1_score": 0.5569,
+      "expected_rank": 4
+    },
+    {
+      "question": "I was debited twice for ₦25,000, what happens next?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-03#6",
+      "expected_heading_contains": "double debit",
+      "top_results": [
+        {
+          "id": "RUB-DOC-03#6",
+          "score": 0.4734
+        },
+        {
+          "id": "RUB-DOC-04#1",
+          "score": 0.2687
+        },
+        {
+          "id": "RUB-DOC-06#9",
+          "score": 0.2628
+        },
+        {
+          "id": "RUB-DOC-07#6",
+          "score": 0.2609
+        }
+      ],
+      "top1_id": "RUB-DOC-03#6",
+      "top1_score": 0.4734,
+      "expected_rank": 1
+    },
+    {
+      "question": "What details do I need to report a transfer problem?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-03#7",
+      "expected_heading_contains": "information",
+      "top_results": [
+        {
+          "id": "RUB-DOC-03#7",
+          "score": 0.6197
+        },
+        {
+          "id": "RUB-DOC-03#3",
+          "score": 0.5203
+        },
+        {
+          "id": "RUB-DOC-03#8",
+          "score": 0.4316
+        },
+        {
+          "id": "RUB-DOC-03#5",
+          "score": 0.3572
+        }
+      ],
+      "top1_id": "RUB-DOC-03#7",
+      "top1_score": 0.6197,
+      "expected_rank": 1
+    },
+    {
+      "question": "How do I raise a dispute on a transaction?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-04#3",
+      "expected_heading_contains": "disput",
+      "top_results": [
+        {
+          "id": "RUB-DOC-04#1",
+          "score": 0.6397
+        },
+        {
+          "id": "RUB-DOC-04#3",
+          "score": 0.6266
+        },
+        {
+          "id": "RUB-DOC-01#8",
+          "score": 0.4599
+        },
+        {
+          "id": "RUB-DOC-04#2",
+          "score": 0.4296
+        }
+      ],
+      "top1_id": "RUB-DOC-04#1",
+      "top1_score": 0.6397,
+      "expected_rank": 2
+    },
+    {
+      "question": "How many working days does a complaint take to resolve?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-04#5",
+      "expected_heading_contains": "timeline",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#7",
+          "score": 0.5416
+        },
+        {
+          "id": "RUB-DOC-04#4",
+          "score": 0.4906
+        },
+        {
+          "id": "RUB-DOC-04#5",
+          "score": 0.4881
+        },
+        {
+          "id": "RUB-DOC-06#9",
+          "score": 0.3983
+        }
+      ],
+      "top1_id": "RUB-DOC-08#7",
+      "top1_score": 0.5416,
+      "expected_rank": 3
+    },
+    {
+      "question": "I am not happy with the answer to my complaint, who can I escalate to?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-04#6",
+      "expected_heading_contains": "escalat",
+      "top_results": [
+        {
+          "id": "RUB-DOC-04#7",
+          "score": 0.4926
+        },
+        {
+          "id": "RUB-DOC-04#6",
+          "score": 0.4652
+        },
+        {
+          "id": "RUB-DOC-04#1",
+          "score": 0.3933
+        },
+        {
+          "id": "RUB-DOC-08#7",
+          "score": 0.3825
+        }
+      ],
+      "top1_id": "RUB-DOC-04#7",
+      "top1_score": 0.4926,
+      "expected_rank": 2
+    },
+    {
+      "question": "When can I take my complaint to the CBN?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-04#7",
+      "expected_heading_contains": "cbn",
+      "top_results": [
+        {
+          "id": "RUB-DOC-04#7",
+          "score": 0.6663
+        },
+        {
+          "id": "RUB-DOC-04#10",
+          "score": 0.5925
+        },
+        {
+          "id": "RUB-DOC-08#7",
+          "score": 0.4
+        },
+        {
+          "id": "RUB-DOC-04#1",
+          "score": 0.3693
+        }
+      ],
+      "top1_id": "RUB-DOC-04#7",
+      "top1_score": 0.6663,
+      "expected_rank": 1
+    },
+    {
+      "question": "How do I block my lost card?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-05#3",
+      "expected_heading_contains": "lost",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#5",
+          "score": 0.662
+        },
+        {
+          "id": "RUB-DOC-05#4",
+          "score": 0.6077
+        },
+        {
+          "id": "RUB-DOC-05#3",
+          "score": 0.5814
+        },
+        {
+          "id": "RUB-DOC-07#5",
+          "score": 0.4014
+        }
+      ],
+      "top1_id": "RUB-DOC-08#5",
+      "top1_score": 0.662,
+      "expected_rank": 3
+    },
+    {
+      "question": "How do I bank using USSD?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-05#6",
+      "expected_heading_contains": "ussd",
+      "top_results": [
+        {
+          "id": "RUB-DOC-05#6",
+          "score": 0.5044
+        },
+        {
+          "id": "RUB-DOC-05#8",
+          "score": 0.3498
+        },
+        {
+          "id": "RUB-DOC-05#7",
+          "score": 0.3088
+        },
+        {
+          "id": "RUB-DOC-05#4",
+          "score": 0.2727
+        }
+      ],
+      "top1_id": "RUB-DOC-05#6",
+      "top1_score": 0.5044,
+      "expected_rank": 1
+    },
+    {
+      "question": "What is the daily limit for a Tier 1 account?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-02#3",
+      "expected_heading_contains": "tier 1",
+      "top_results": [
+        {
+          "id": "RUB-DOC-02#4",
+          "score": 0.5649
+        },
+        {
+          "id": "RUB-DOC-02#3",
+          "score": 0.5406
+        },
+        {
+          "id": "RUB-DOC-08#2",
+          "score": 0.4613
+        },
+        {
+          "id": "RUB-DOC-02#5",
+          "score": 0.4217
+        }
+      ],
+      "top1_id": "RUB-DOC-02#4",
+      "top1_score": 0.5649,
+      "expected_rank": 2
+    },
+    {
+      "question": "What do I need to upgrade my account tier?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-02#7",
+      "expected_heading_contains": "upgrad",
+      "top_results": [
+        {
+          "id": "RUB-DOC-02#7",
+          "score": 0.6519
+        },
+        {
+          "id": "RUB-DOC-08#2",
+          "score": 0.4992
+        },
+        {
+          "id": "RUB-DOC-02#4",
+          "score": 0.4273
+        },
+        {
+          "id": "RUB-DOC-02#3",
+          "score": 0.4126
+        }
+      ],
+      "top1_id": "RUB-DOC-02#7",
+      "top1_score": 0.6519,
+      "expected_rank": 1
+    },
+    {
+      "question": "What are the requirements for a Rubies loan?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-06#4",
+      "expected_heading_contains": "eligib",
+      "top_results": [
+        {
+          "id": "RUB-DOC-06#6",
+          "score": 0.8404
+        },
+        {
+          "id": "RUB-DOC-08#6",
+          "score": 0.7502
+        },
+        {
+          "id": "RUB-DOC-06#1",
+          "score": 0.7341
+        },
+        {
+          "id": "RUB-DOC-06#2",
+          "score": 0.7277
+        }
+      ],
+      "top1_id": "RUB-DOC-06#6",
+      "top1_score": 0.8404,
+      "expected_rank": null
+    },
+    {
+      "question": "How does the bank check whether I qualify for a loan?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-06#5",
+      "expected_heading_contains": "eligib",
+      "top_results": [
+        {
+          "id": "RUB-DOC-06#5",
+          "score": 0.5691
+        },
+        {
+          "id": "RUB-DOC-06#4",
+          "score": 0.3749
+        },
+        {
+          "id": "RUB-DOC-06#7",
+          "score": 0.3292
+        },
+        {
+          "id": "RUB-DOC-06#8",
+          "score": 0.2909
+        }
+      ],
+      "top1_id": "RUB-DOC-06#5",
+      "top1_score": 0.5691,
+      "expected_rank": 1
+    },
+    {
+      "question": "Will Rubies ever call me to ask for my OTP?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-07#1",
+      "expected_heading_contains": "never ask",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#9",
+          "score": 0.6682
+        },
+        {
+          "id": "RUB-DOC-07#1",
+          "score": 0.6491
+        },
+        {
+          "id": "RUB-DOC-05#5",
+          "score": 0.5758
+        },
+        {
+          "id": "RUB-DOC-07#3",
+          "score": 0.5394
+        }
+      ],
+      "top1_id": "RUB-DOC-08#9",
+      "top1_score": 0.6682,
+      "expected_rank": 2
+    },
+    {
+      "question": "What should I do if I gave my details to a scammer?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-07#5",
+      "expected_heading_contains": "mistake",
+      "top_results": [
+        {
+          "id": "RUB-DOC-07#5",
+          "score": 0.3881
+        },
+        {
+          "id": "RUB-DOC-04#8",
+          "score": 0.1918
+        },
+        {
+          "id": "RUB-DOC-07#2",
+          "score": 0.191
+        },
+        {
+          "id": "RUB-DOC-03#7",
+          "score": 0.181
+        }
+      ],
+      "top1_id": "RUB-DOC-07#5",
+      "top1_score": 0.3881,
+      "expected_rank": 1
+    },
+    {
+      "question": "How does the chat assistant verify me?",
+      "group": "in_scope",
+      "expected_chunk_id": "RUB-DOC-07#7",
+      "expected_heading_contains": "verif",
+      "top_results": [
+        {
+          "id": "RUB-DOC-07#7",
+          "score": 0.7118
+        },
+        {
+          "id": "RUB-DOC-08#8",
+          "score": 0.408
+        },
+        {
+          "id": "RUB-DOC-04#2",
+          "score": 0.2436
+        },
+        {
+          "id": "RUB-DOC-07#4",
+          "score": 0.2348
+        }
+      ],
+      "top1_id": "RUB-DOC-07#7",
+      "top1_score": 0.7118,
+      "expected_rank": 1
+    },
+    {
+      "question": "What is the capital of France?",
+      "group": "out_of_scope",
+      "kind": "off_topic",
+      "top_results": [
+        {
+          "id": "RUB-DOC-04#9",
+          "score": 0.1027
+        },
+        {
+          "id": "RUB-DOC-08#5",
+          "score": 0.0838
+        },
+        {
+          "id": "RUB-DOC-08#8",
+          "score": 0.0725
+        },
+        {
+          "id": "RUB-DOC-03#5",
+          "score": 0.0724
+        }
+      ],
+      "top1_id": "RUB-DOC-04#9",
+      "top1_score": 0.1027,
+      "expected_rank": null
+    },
+    {
+      "question": "What is the weather in Lagos today?",
+      "group": "out_of_scope",
+      "kind": "off_topic",
+      "top_results": [
+        {
+          "id": "RUB-DOC-03#5",
+          "score": 0.1192
+        },
+        {
+          "id": "RUB-DOC-03#3",
+          "score": 0.0795
+        },
+        {
+          "id": "RUB-DOC-02#4",
+          "score": 0.079
+        },
+        {
+          "id": "RUB-DOC-03#2",
+          "score": 0.0777
+        }
+      ],
+      "top1_id": "RUB-DOC-03#5",
+      "top1_score": 0.1192,
+      "expected_rank": null
+    },
+    {
+      "question": "How do I bake jollof rice?",
+      "group": "out_of_scope",
+      "kind": "off_topic",
+      "top_results": [
+        {
+          "id": "RUB-DOC-06#7",
+          "score": 0.0995
+        },
+        {
+          "id": "RUB-DOC-02#6",
+          "score": 0.0891
+        },
+        {
+          "id": "RUB-DOC-02#7",
+          "score": 0.0876
+        },
+        {
+          "id": "RUB-DOC-05#2",
+          "score": 0.0867
+        }
+      ],
+      "top1_id": "RUB-DOC-06#7",
+      "top1_score": 0.0995,
+      "expected_rank": null
+    },
+    {
+      "question": "Can I buy bitcoin with my Rubies account?",
+      "group": "out_of_scope",
+      "kind": "in_domain_unanswerable",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#1",
+          "score": 0.5167
+        },
+        {
+          "id": "RUB-DOC-02#3",
+          "score": 0.5084
+        },
+        {
+          "id": "RUB-DOC-08#10",
+          "score": 0.5024
+        },
+        {
+          "id": "RUB-DOC-08#2",
+          "score": 0.5022
+        }
+      ],
+      "top1_id": "RUB-DOC-08#1",
+      "top1_score": 0.5167,
+      "expected_rank": null
+    },
+    {
+      "question": "Who is the CEO of Rubies?",
+      "group": "out_of_scope",
+      "kind": "in_domain_unanswerable",
+      "top_results": [
+        {
+          "id": "RUB-DOC-08#1",
+          "score": 0.5155
+        },
+        {
+          "id": "RUB-DOC-08#10",
+          "score": 0.4821
+        },
+        {
+          "id": "RUB-DOC-02#5",
+          "score": 0.4551
+        },
+        {
+          "id": "RUB-DOC-08#6",
+          "score": 0.4359
+        }
+      ],
+      "top1_id": "RUB-DOC-08#1",
+      "top1_score": 0.5155,
+      "expected_rank": null
+    },
+    {
+      "question": "What is your mortgage interest rate?",
+      "group": "out_of_scope",
+      "kind": "in_domain_unanswerable",
+      "top_results": [
+        {
+          "id": "RUB-DOC-06#8",
+          "score": 0.1335
+        },
+        {
+          "id": "RUB-DOC-06#4",
+          "score": 0.1314
+        },
+        {
+          "id": "RUB-DOC-06#5",
+          "score": 0.119
+        },
+        {
+          "id": "RUB-DOC-06#2",
+          "score": 0.1186
+        }
+      ],
+      "top1_id": "RUB-DOC-06#8",
+      "top1_score": 0.1335,
+      "expected_rank": null
+    }
+  ],
+  "thresholds": [
+    {
+      "threshold": 0.2,
+      "in_scope_answered": 20,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.25,
+      "in_scope_answered": 20,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.3,
+      "in_scope_answered": 20,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.35,
+      "in_scope_answered": 20,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.4,
+      "in_scope_answered": 19,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.45,
+      "in_scope_answered": 19,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.5,
+      "in_scope_answered": 16,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 2
+    },
+    {
+      "threshold": 0.55,
+      "in_scope_answered": 12,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 0
+    },
+    {
+      "threshold": 0.6,
+      "in_scope_answered": 9,
+      "off_topic_answered": 0,
+      "in_domain_unanswerable_answered": 0
+    }
+  ],
+  "recall_at_top_k": {
+    "hits": 19,
+    "total": 20
+  },
+  "top1_accuracy": {
+    "hits": 10,
+    "total": 20
+  },
+  "configured_threshold": 0.35,
+  "configured": {
+    "in_scope_refused": 0,
+    "off_topic_answered": 0,
+    "in_domain_unanswerable_answered": 2
+  }
+}

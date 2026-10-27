@@ -1,0 +1,77 @@
+# Tuning set for the similarity threshold only.
+# The held-out evaluation set is built in Chat 7.
+in_scope:
+  - question: "How much does it cost to transfer ₦20,000 to another bank?"
+    expected_chunk_id: RUB-DOC-01#2
+    expected_heading_contains: "transfer fee"
+  - question: "Is there a fee to send money to another Rubies account?"
+    expected_chunk_id: RUB-DOC-01#2
+    expected_heading_contains: "transfer fee"
+  - question: "How much is an SMS alert?"
+    expected_chunk_id: RUB-DOC-01#5
+    expected_heading_contains: "sms"
+  - question: "How much do I pay for a replacement debit card?"
+    expected_chunk_id: RUB-DOC-01#4
+    expected_heading_contains: "card"
+  - question: "My transfer failed but I was debited. When will I get my money back?"
+    expected_chunk_id: RUB-DOC-03#4
+    expected_heading_contains: "reversal"
+  - question: "I was debited twice for ₦25,000, what happens next?"
+    expected_chunk_id: RUB-DOC-03#6
+    expected_heading_contains: "double debit"
+  - question: "What details do I need to report a transfer problem?"
+    expected_chunk_id: RUB-DOC-03#7
+    expected_heading_contains: "information"
+  - question: "How do I raise a dispute on a transaction?"
+    expected_chunk_id: RUB-DOC-04#3
+    expected_heading_contains: "disput"
+  - question: "How many working days does a complaint take to resolve?"
+    expected_chunk_id: RUB-DOC-04#5
+    expected_heading_contains: "timeline"
+  - question: "I am not happy with the answer to my complaint, who can I escalate to?"
+    expected_chunk_id: RUB-DOC-04#6
+    expected_heading_contains: "escalat"
+  - question: "When can I take my complaint to the CBN?"
+    expected_chunk_id: RUB-DOC-04#7
+    expected_heading_contains: "cbn"
+  - question: "How do I block my lost card?"
+    expected_chunk_id: RUB-DOC-05#3
+    expected_heading_contains: "lost"
+  - question: "How do I bank using USSD?"
+    expected_chunk_id: RUB-DOC-05#6
+    expected_heading_contains: "ussd"
+  - question: "What is the daily limit for a Tier 1 account?"
+    expected_chunk_id: RUB-DOC-02#3
+    expected_heading_contains: "tier 1"
+  - question: "What do I need to upgrade my account tier?"
+    expected_chunk_id: RUB-DOC-02#7
+    expected_heading_contains: "upgrad"
+  - question: "What are the requirements for a Rubies loan?"
+    expected_chunk_id: RUB-DOC-06#4
+    expected_heading_contains: "eligib"
+  - question: "How does the bank check whether I qualify for a loan?"
+    expected_chunk_id: RUB-DOC-06#5
+    expected_heading_contains: "eligib"
+  - question: "Will Rubies ever call me to ask for my OTP?"
+    expected_chunk_id: RUB-DOC-07#1
+    expected_heading_contains: "never ask"
+  - question: "What should I do if I gave my details to a scammer?"
+    expected_chunk_id: RUB-DOC-07#5
+    expected_heading_contains: "mistake"
+  - question: "How does the chat assistant verify me?"
+    expected_chunk_id: RUB-DOC-07#7
+    expected_heading_contains: "verif"
+
+out_of_scope:
+  - question: "What is the capital of France?"
+    kind: off_topic
+  - question: "What is the weather in Lagos today?"
+    kind: off_topic
+  - question: "How do I bake jollof rice?"
+    kind: off_topic
+  - question: "Can I buy bitcoin with my Rubies account?"
+    kind: in_domain_unanswerable
+  - question: "Who is the CEO of Rubies?"
+    kind: in_domain_unanswerable
+  - question: "What is your mortgage interest rate?"
+    kind: in_domain_unanswerable

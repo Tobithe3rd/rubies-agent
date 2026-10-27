@@ -28,9 +28,13 @@ rag:
   ignore_prefixes: ["_"]
   chunks_path: data/rag_chunks.jsonl
   top_k: 4
-  # tune later against eval questions; meaning depends on the distance metric
+  # calibrated from data/rag_calibration.json: lowest in-scope top-1 0.4924,
+  # highest clearly off-topic 0.1335; in-domain unanswerable questions can
+  # score about 0.516 and are NOT separable by threshold.
   similarity_threshold: 0.35
   max_failed_retrievals: 2
+  max_query_chars: 1000
+  no_result_message: "No relevant policy information was found. Do not guess. Tell the customer you do not know and offer a human handoff."
 
 session:
   expiry_minutes: 15

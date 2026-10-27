@@ -78,9 +78,39 @@ class RAGConfig(BaseModel):
     chunking: ChunkingConfig
     ignore_prefixes: list[str] = Field(default_factory=lambda: ["_"])
     chunks_path: str
-    top_k: int = Field(ge=1)
+    top_k: int = Field(ge=1, le=20)
     similarity_threshold: float = Field(ge=0.0, le=1.0)
     max_failed_retrievals: int = Field(ge=0)
+    max_query_chars: int = Field(ge=50, le=5000)
+    no_result_message: str
+
+    @field_validator("no_result_message")
+    @classmethod
+    def message_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("rag.no_result_message must not be empty")
+        return v
+
+    @field_validator("similarity_threshold")
+    @classmethod
+    def threshold_in_range(cls, v: float) -> float:
+        if not (0.0 <= v <= 1.0):
+            raise ValueError("rag.similarity_threshold must be between 0 and 1")
+        return v
+
+    @field_validator("top_k")
+    @classmethod
+    def top_k_in_range(cls, v: int) -> int:
+        if not (1 <= v <= 20):
+            raise ValueError("rag.top_k must be an integer from 1 to 20")
+        return v
+
+    @field_validator("max_query_chars")
+    @classmethod
+    def max_query_chars_in_range(cls, v: int) -> int:
+        if not (50 <= v <= 5000):
+            raise ValueError("rag.max_query_chars must be an integer from 50 to 5000")
+        return v
 
 
 class SessionConfig(BaseModel):

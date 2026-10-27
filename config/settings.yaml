@@ -55,3 +55,12 @@ bank_api:
   otp_max_attempts: 3
   otp_delivery: mock
   otp_log_path: logs/otp.log
+  pending_action_ttl_seconds: 300
+  mini_statement_max_n: 50
+  mini_statement_default_n: 10
+  eligibility:
+    min_account_age_days: 30
+    min_avg_monthly_inflow_naira: 100000
+    max_loan_to_inflow_multiple: 3
+    kyc_tiers_allowed: [tier1, tier2, tier3]
+    requested_amount_max_naira: 500000

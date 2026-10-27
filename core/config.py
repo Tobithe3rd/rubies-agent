@@ -82,6 +82,15 @@ class StartupConfig(BaseModel):
     require_components: bool
 
 
+class EligibilityConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    min_account_age_days: int = Field(ge=0)
+    min_avg_monthly_inflow_naira: int = Field(ge=0)
+    max_loan_to_inflow_multiple: float = Field(gt=0)
+    kyc_tiers_allowed: list[str] = Field(min_length=1)
+    requested_amount_max_naira: int = Field(ge=1)
+
+
 class BankAPIConfig(BaseModel):
     model_config = {"extra": "forbid"}
     db_path: str
@@ -91,12 +100,24 @@ class BankAPIConfig(BaseModel):
     otp_max_attempts: int = Field(ge=1, le=10)
     otp_delivery: str = "mock"
     otp_log_path: str
+    pending_action_ttl_seconds: int = Field(ge=60)
+    mini_statement_max_n: int = Field(ge=1)
+    mini_statement_default_n: int = Field(ge=1)
+    eligibility: EligibilityConfig
 
     @field_validator("otp_delivery")
     @classmethod
     def only_mock_supported(cls, v: str) -> str:
         if v != "mock":
             raise ValueError("only 'mock' is supported for otp_delivery at this stage")
+        return v
+
+    @field_validator("mini_statement_default_n")
+    @classmethod
+    def default_le_max(cls, v: int, info) -> int:
+        max_n = info.data.get("mini_statement_max_n")
+        if max_n is not None and v > max_n:
+            raise ValueError("mini_statement_default_n must be <= mini_statement_max_n")
         return v
 
 

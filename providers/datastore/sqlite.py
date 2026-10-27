@@ -160,6 +160,20 @@ class SQLiteDataStore(DataStore):
         )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_handoff_customer ON handoff_tickets(customer_id)")
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS pending_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_hash TEXT UNIQUE NOT NULL,
+            session_ref TEXT,
+            customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+            action_type TEXT NOT NULL CHECK(action_type IN ('dispute', 'block_card')),
+            payload_json TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0
+        )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pending_customer ON pending_actions(customer_id)")
         conn.commit()
         conn.close()
 
@@ -221,6 +235,15 @@ class SQLiteDataStore(DataStore):
         conn.close()
         return dict(row)
 
+    def get_open_dispute_for_transaction(self, customer_id: int, transaction_id: int) -> Optional[dict]:
+        conn = self._connection()
+        row = conn.execute(
+            "SELECT * FROM disputes WHERE customer_id = ? AND transaction_id = ? AND status = 'open'",
+            (customer_id, transaction_id)
+        ).fetchone()
+        conn.close()
+        return dict(row) if row else None
+
     def get_card(self, customer_id: int, last4: str) -> Optional[dict]:
         conn = self._connection()
         row = conn.execute(
@@ -254,13 +277,19 @@ class SQLiteDataStore(DataStore):
         account = self.get_account(customer_id)
         if not account:
             return {}
-        transactions = self.list_transactions(customer_id, limit=100)
-        total_inflow = sum(
-            t["amount_kobo"] for t in transactions if t.get("direction") == "credit"
+        transactions = self.list_transactions(customer_id, limit=1000)
+        credits_kobo = sum(
+            t["amount_kobo"] for t in transactions
+            if t.get("direction") == "credit" and t.get("status") == "success"
         )
+        try:
+            opened = datetime.datetime.strptime(account["opened_at"], "%Y-%m-%d")
+            age_days = (datetime.datetime.now() - opened).days
+        except Exception:
+            age_days = 0
         return {
-            "account_age_days": 0,
-            "avg_monthly_inflow_kobo": total_inflow,
+            "account_age_days": age_days,
+            "avg_monthly_inflow_kobo": credits_kobo // 3,
             "existing_loan": self.get_active_loan(customer_id) is not None,
             "kyc_tier": account.get("kyc_tier", "tier1"),
         }
@@ -337,11 +366,43 @@ class SQLiteDataStore(DataStore):
     def reset_data(self) -> None:
         conn = self._connection()
         tables = [
-            "handoff_tickets", "audit_log", "otps", "sessions",
+            "pending_actions", "handoff_tickets", "audit_log", "otps", "sessions",
             "disputes", "loans", "cards", "transactions", "accounts", "customers"
         ]
         for t in tables:
             conn.execute(f"DELETE FROM {t}")
+        conn.commit()
+        conn.close()
+
+    def create_pending_action(self, customer_id: int, token_hash: str, session_ref: Optional[str],
+                              action_type: str, payload_json: str, expires_at: str) -> dict:
+        conn = self._connection()
+        cursor = conn.execute(
+            "INSERT INTO pending_actions (customer_id, token_hash, session_ref, action_type, payload_json, expires_at, used) "
+            "VALUES (?, ?, ?, ?, ?, ?, 0)",
+            (customer_id, token_hash, session_ref, action_type, payload_json, expires_at)
+        )
+        conn.commit()
+        pending_id = cursor.lastrowid
+        row = conn.execute("SELECT * FROM pending_actions WHERE id = ?", (pending_id,)).fetchone()
+        conn.close()
+        return dict(row)
+
+    def get_pending_action_by_token_hash(self, customer_id: int, token_hash: str) -> Optional[dict]:
+        conn = self._connection()
+        row = conn.execute(
+            "SELECT * FROM pending_actions WHERE customer_id = ? AND token_hash = ?",
+            (customer_id, token_hash)
+        ).fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def mark_pending_action_used(self, customer_id: int, pending_action_id: int) -> None:
+        conn = self._connection()
+        conn.execute(
+            "UPDATE pending_actions SET used = 1 WHERE id = ? AND customer_id = ?",
+            (pending_action_id, customer_id)
+        )
         conn.commit()
         conn.close()
 

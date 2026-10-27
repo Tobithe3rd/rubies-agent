@@ -153,6 +153,10 @@ class DataStore(abc.ABC):
     def create_dispute(self, customer_id: int, transaction_id: int, reason: str) -> dict:
         ...
 
+    @abc.abstractmethod
+    def get_open_dispute_for_transaction(self, customer_id: int, transaction_id: int) -> Optional[dict]:
+        ...
+
     # Cards
     @abc.abstractmethod
     def get_card(self, customer_id: int, last4: str) -> Optional[dict]:
@@ -217,6 +221,20 @@ class DataStore(abc.ABC):
 
     @abc.abstractmethod
     def insert_seed_data(self, dataset: dict) -> None:
+        ...
+
+    # Pending actions (two-step confirmation)
+    @abc.abstractmethod
+    def create_pending_action(self, customer_id: int, token_hash: str, session_ref: Optional[str],
+                              action_type: str, payload_json: str, expires_at: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def get_pending_action_by_token_hash(self, customer_id: int, token_hash: str) -> Optional[dict]:
+        ...
+
+    @abc.abstractmethod
+    def mark_pending_action_used(self, customer_id: int, pending_action_id: int) -> None:
         ...
 
 

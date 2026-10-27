@@ -39,9 +39,19 @@ adapter:
   host: 0.0.0.0
   port: 8000
 
+seed:
+  random_seed: 42
+  customer_count: 20
+  history_days: 90
+
 startup:
   require_components: false  # when false, unbuilt components are reported; set true once all providers exist
 
 bank_api:
   db_path: data/bank.db
   store_type: sqlite
+  otp_length: 6
+  otp_ttl_seconds: 300
+  otp_max_attempts: 3
+  otp_delivery: mock
+  otp_log_path: logs/otp.log

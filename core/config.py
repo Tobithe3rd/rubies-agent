@@ -70,6 +70,13 @@ class AdapterConfig(BaseModel):
     port: int = Field(ge=1, le=65535)
 
 
+class SeedConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    random_seed: int = 42
+    customer_count: int = Field(ge=1, le=100)
+    history_days: int = Field(ge=1)
+
+
 class StartupConfig(BaseModel):
     model_config = {"extra": "forbid"}
     require_components: bool
@@ -79,6 +86,18 @@ class BankAPIConfig(BaseModel):
     model_config = {"extra": "forbid"}
     db_path: str
     store_type: str = "sqlite"
+    otp_length: int = Field(ge=4, le=10)
+    otp_ttl_seconds: int = Field(ge=60)
+    otp_max_attempts: int = Field(ge=1, le=10)
+    otp_delivery: str = "mock"
+    otp_log_path: str
+
+    @field_validator("otp_delivery")
+    @classmethod
+    def only_mock_supported(cls, v: str) -> str:
+        if v != "mock":
+            raise ValueError("only 'mock' is supported for otp_delivery at this stage")
+        return v
 
 
 class Settings(BaseModel):
@@ -93,6 +112,7 @@ class Settings(BaseModel):
     adapter: AdapterConfig
     bank_api: BankAPIConfig
     startup: StartupConfig
+    seed: SeedConfig
 
 
 # --- tools ---
@@ -120,12 +140,20 @@ class EnvConfig(BaseModel):
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_SESSION_TOKEN: Optional[str] = None
     BANK_API_URL: str
+    OTP_HASH_SECRET: str
 
     @field_validator("AWS_REGION", "BANK_API_URL")
     @classmethod
     def must_be_non_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("must be a non-empty string")
+        return v
+
+    @field_validator("OTP_HASH_SECRET")
+    @classmethod
+    def otp_secret_min_length(cls, v: str) -> str:
+        if not v or len(v) < 16:
+            raise ValueError("OTP_HASH_SECRET is required and must be at least 16 characters")
         return v
 
     @field_validator("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
@@ -202,6 +230,7 @@ def load_config(config_dir: str = "config") -> AppConfig:
             AWS_SECRET_ACCESS_KEY=os.environ.get("AWS_SECRET_ACCESS_KEY") or None,
             AWS_SESSION_TOKEN=os.environ.get("AWS_SESSION_TOKEN") or None,
             BANK_API_URL=os.environ.get("BANK_API_URL", ""),
+            OTP_HASH_SECRET=os.environ.get("OTP_HASH_SECRET", ""),
         )
     except ValidationError as exc:
         for err in exc.errors():
@@ -220,7 +249,7 @@ def load_config(config_dir: str = "config") -> AppConfig:
 def masked_summary(app_config: AppConfig) -> dict[str, Any]:
     def mask(value: Any) -> Any:
         if isinstance(value, dict):
-            return {k: "***" if k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN") else mask(v) for k, v in value.items()}
+            return {k: "***" if k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "OTP_HASH_SECRET") else mask(v) for k, v in value.items()}
         if isinstance(value, list):
             return [mask(v) for v in value]
         return value
@@ -238,5 +267,6 @@ def masked_summary(app_config: AppConfig) -> dict[str, Any]:
             "AWS_SECRET_ACCESS_KEY": "***",
             "AWS_SESSION_TOKEN": "***" if app_config.env.AWS_SESSION_TOKEN else None,
             "BANK_API_URL": app_config.env.BANK_API_URL,
+            "OTP_HASH_SECRET": "***",
         },
     }

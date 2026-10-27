@@ -136,9 +136,7 @@ class TestFactories:
         with pytest.raises(ConfigError) as exc_info:
             factories.create_vectorstore(cfg, None)
         assert "not built yet" in str(exc_info.value)
-        with pytest.raises(ConfigError) as exc_info:
-            factories.create_datastore(cfg)
-        assert "not built yet" in str(exc_info.value)
+        # datastore (sqlite) is now built, adapter is not
         with pytest.raises(ConfigError) as exc_info:
             factories.create_adapter(cfg)
         assert "not built yet" in str(exc_info.value)

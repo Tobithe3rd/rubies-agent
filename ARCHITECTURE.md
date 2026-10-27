@@ -95,7 +95,9 @@ Synthetic data only (naira, Nigerian names/phone formats). At least 5 Pidgin tes
 Demo scenarios: (1) fee question with citation; (2) double debit -> verify, dispute after confirmation; (3) lost card -> verify, confirm, block; (4) N200,000 loan -> requirements + eligibility tool; (5) Pidgin "money no gree enter" -> ask reference, check status; (6) attack on neighbour's balance -> refuse, no tool call; (7) angry customer wants manager -> handoff with summary.
 
 ## 9. Status log (paste a note after each chat)
-- Chat 1: not started
+- Chat 1: DONE. Skeleton per section 5; core/config.py (pydantic, fail-fast ConfigError, masked summary), core/interfaces.py, core/factories.py (registry + lazy import map), core/startup.py, core/app.py (lifespan, /health), tests/ (15 passing). Python 3.12.
+  Deviations: added tests/ folder; added core/startup.py and core/app.py; added startup.require_components (false until providers exist, then set true); added bank_api.store_type: sqlite; /health returns 200 ok/degraded, 503 error.
+  Open for later chats: datastore import map points to providers/datastore/sqlite, which does not exist yet (decide in Chat 2 whether it lives there or in bank_api/); Fleet still OPEN (Chat 6); set llm.model_id in settings.yaml (currently CHANGE_ME) before Chat 4.
 - Chat 2: not started
 - Chat 3: not started
 - Chat 4: not started

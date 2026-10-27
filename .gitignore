@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 logs/*.jsonl
+logs/*.log
 data/*.db
 data/chroma/
 .pytest_cache/

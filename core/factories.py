@@ -9,6 +9,7 @@ from core.interfaces import (
     Embedder,
     InterfaceAdapter,
     LLMProvider,
+    OTPSender,
     VectorStore,
 )
 
@@ -25,6 +26,7 @@ _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("vectorstore", "chroma"): "providers.vectorstore.chroma",
     ("datastore", "sqlite"): "providers.datastore.sqlite",
     ("adapter", "http_chat"): "adapters.http_chat",
+    ("otp_sender", "mock"): "providers.otp.mock",
 }
 
 _REGISTRY: dict[str, dict[str, Any]] = {
@@ -33,6 +35,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     "vectorstore": {},
     "datastore": {},
     "adapter": {},
+    "otp_sender": {},
 }
 
 
@@ -117,6 +120,12 @@ def create_adapter(cfg: AppConfig) -> InterfaceAdapter:
     name = cfg.settings.adapter.type
     cls = _get_class("adapter", name)
     return cls(cfg.settings.adapter, cfg.env)
+
+
+def create_otp_sender(cfg: AppConfig) -> OTPSender:
+    name = cfg.settings.bank_api.otp_delivery
+    cls = _get_class("otp_sender", name)
+    return cls(cfg.settings.bank_api, cfg.env)
 
 
 # --- build_components ---

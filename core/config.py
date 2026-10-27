@@ -25,10 +25,21 @@ class LLMConfig(BaseModel):
 
 class EmbeddingsConfig(BaseModel):
     model_config = {"extra": "forbid"}
-    provider: str = "bedrock_titan"
+    provider: str = "titan"
     model_id: str
     dimensions: int = Field(ge=1)
     normalize: bool = True
+    max_retries: int = Field(ge=0)
+    backoff_seconds: float = Field(ge=0)
+    request_timeout_seconds: int = Field(ge=1)
+
+    @field_validator("provider")
+    @classmethod
+    def known_provider(cls, v: str) -> str:
+        allowed = ["titan", "mock"]
+        if v not in allowed:
+            raise ValueError(f"embedding.provider must be one of: {', '.join(allowed)}")
+        return v
 
 
 class VectorstoreConfig(BaseModel):

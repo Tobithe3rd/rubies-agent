@@ -22,7 +22,8 @@ from core.interfaces import (
 # is expected to call register(kind, name) on its implementations.
 _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("llm", "bedrock"): "providers.llm.bedrock",
-    ("embedder", "bedrock_titan"): "providers.embeddings.bedrock_titan",
+    ("embedder", "titan"): "providers.embeddings.titan",
+    ("embedder", "mock"): "providers.embeddings.mock",
     ("vectorstore", "chroma"): "providers.vectorstore.chroma",
     ("datastore", "sqlite"): "providers.datastore.sqlite",
     ("adapter", "http_chat"): "adapters.http_chat",

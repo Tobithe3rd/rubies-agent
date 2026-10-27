@@ -5,3 +5,4 @@ pyyaml
 python-dotenv
 httpx
 pytest
+boto3

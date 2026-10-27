@@ -48,6 +48,14 @@ class VectorstoreConfig(BaseModel):
     path: str
     collection: str
 
+    @field_validator("type")
+    @classmethod
+    def known_type(cls, v: str) -> str:
+        allowed = ["chroma"]
+        if v not in allowed:
+            raise ValueError(f"vector_store.type must be one of: {', '.join(allowed)}")
+        return v
+
 
 class ChunkingConfig(BaseModel):
     model_config = {"extra": "forbid"}

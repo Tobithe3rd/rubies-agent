@@ -6,3 +6,4 @@ python-dotenv
 httpx
 pytest
 boto3
+chromadb

@@ -132,9 +132,9 @@ class TestFactories:
         assert "not built yet" in str(exc_info.value)
         # embedder (titan) is now built
         assert factories.create_embedder(cfg) is not None
-        with pytest.raises(ConfigError) as exc_info:
-            factories.create_vectorstore(cfg, None)
-        assert "not built yet" in str(exc_info.value)
+        # vectorstore (chroma) is now built
+        embedder = factories.create_embedder(cfg)
+        assert factories.create_vectorstore(cfg, embedder) is not None
         # datastore (sqlite) is now built, adapter is not
         with pytest.raises(ConfigError) as exc_info:
             factories.create_adapter(cfg)

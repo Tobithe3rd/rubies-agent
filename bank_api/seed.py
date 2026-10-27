@@ -3,7 +3,10 @@ from __future__ import annotations
 import math
 import random
 import datetime
+from pathlib import Path
 from typing import Optional
+
+import yaml
 
 from core.config import load_config
 from providers.datastore.sqlite import SQLiteDataStore
@@ -20,6 +23,17 @@ def _ceil_to_1000_naira(kobo: int) -> int:
     """Round a kobo amount up to the nearest 1,000 naira."""
     unit = naira_to_kobo(1000)
     return int(math.ceil(kobo / unit) * unit)
+
+
+_TIER_RANK = {"tier1": 1, "tier2": 2, "tier3": 3}
+
+
+def _load_tier_caps() -> dict:
+    """Read the KYC tier caps from rag/facts.yaml (single source of truth)."""
+    facts_path = Path(__file__).resolve().parents[1] / "rag" / "facts.yaml"
+    with open(facts_path, encoding="utf-8") as f:
+        facts = yaml.safe_load(f)
+    return facts["fictional_bank"]["kyc_tiers"]
 
 
 CREDIT_NARRATIONS = ["Transfer in", "POS refund", "Cash deposit"]
@@ -293,6 +307,23 @@ def build_dataset(cfg, today: Optional[str] = None) -> dict:
         acct["opening_balance_kobo"] = opening
         acct["balance_kobo"] = opening + credits_kobo - debits_kobo
 
+    # --- KYC tier: raise to the lowest tier whose max balance fits (never lower).
+    # Caps come from rag/facts.yaml so they are not hardcoded here.
+    tier_caps = _load_tier_caps()
+    ordered_tiers = sorted(tier_caps.items(), key=lambda kv: _TIER_RANK[kv[0]])
+    for cid in range(1, 21):
+        acct = accounts_by_id[cid]
+        current = acct["kyc_tier"]
+        required = current
+        for name, limits in ordered_tiers:
+            cap = limits.get("max_balance_naira")
+            fits = (cap == "no limit") or (acct["balance_kobo"] <= int(cap) * 100)
+            if fits:
+                required = name
+                break
+        if _TIER_RANK[required] > _TIER_RANK[current]:
+            acct["kyc_tier"] = required
+
     dataset["transactions"] = txns
 
     # --- cards: 3 active (1, 4, 8) + 1 already-blocked on customer 4
@@ -343,6 +374,7 @@ def main():
     transactions = dataset.get("transactions", [])
     cards = dataset.get("cards", [])
     loans = dataset.get("loans", [])
+    tier_by_customer = {a["customer_id"]: a["kyc_tier"] for a in dataset.get("accounts", [])}
 
     def find_txn(account_id, status=None, reference=None):
         for t in transactions:
@@ -362,8 +394,8 @@ def main():
     loan = loans[0] if loans else None
 
     lines = ["# Seed manifest", ""]
-    lines.append("| Name | Phone | Scenario | Reference / last4 |")
-    lines.append("|---|---|---|---|")
+    lines.append("| Name | Phone | Scenario | Reference / last4 | KYC tier |")
+    lines.append("|---|---|---|---|---|")
     for c in customers:
         cid = c["id"]
         notes = []
@@ -413,7 +445,8 @@ def main():
             last_col = ""
 
         scenario_text = "; ".join(notes) if notes else "-"
-        lines.append(f"| {c['full_name']} | {c['phone']} | {scenario_text} | {last_col} |")
+        tier_text = tier_by_customer.get(cid, "-")
+        lines.append(f"| {c['full_name']} | {c['phone']} | {scenario_text} | {last_col} | {tier_text} |")
 
     lines.append("")
     lines.append(f"Customers: {len(customers)}")

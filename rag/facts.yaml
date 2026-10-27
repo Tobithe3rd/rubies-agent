@@ -1,0 +1,228 @@
+# Rubies policy facts: single source of truth for the RAG documents.
+# Do not retype numbers by hand. `derived` values are read from
+# config/settings.yaml and the seeded DB; the checker verifies them live.
+# Every real-world rule may be out of date; see rag/sources.md.
+
+derived:
+  # --- eligibility thresholds (config:bank_api.eligibility) ---
+  eligibility_min_account_age_days:
+    value: 30
+    source: "config:bank_api.eligibility.min_account_age_days"
+  eligibility_min_avg_monthly_inflow_naira:
+    value: 100000
+    source: "config:bank_api.eligibility.min_avg_monthly_inflow_naira"
+  eligibility_max_loan_to_inflow_multiple:
+    value: 3
+    source: "config:bank_api.eligibility.max_loan_to_inflow_multiple"
+  eligibility_kyc_tiers_allowed:
+    value: [tier1, tier2, tier3]
+    source: "config:bank_api.eligibility.kyc_tiers_allowed"
+  eligibility_requested_amount_max_naira:
+    value: 500000
+    source: "config:bank_api.eligibility.requested_amount_max_naira"
+
+  # --- session and OTP ---
+  session_expiry_minutes:
+    value: 15
+    source: "config:session.expiry_minutes"
+  session_max_failed_verifications:
+    value: 3
+    source: "config:session.max_failed_verifications"
+  otp_length:
+    value: 6
+    source: "config:bank_api.otp_length"
+  otp_ttl_seconds:
+    value: 300
+    source: "config:bank_api.otp_ttl_seconds"
+  otp_max_attempts:
+    value: 3
+    source: "config:bank_api.otp_max_attempts"
+
+  # --- pending actions and statements ---
+  pending_action_ttl_seconds:
+    value: 300
+    source: "config:bank_api.pending_action_ttl_seconds"
+  mini_statement_default_n:
+    value: 10
+    source: "config:bank_api.mini_statement_default_n"
+  mini_statement_max_n:
+    value: 50
+    source: "config:bank_api.mini_statement_max_n"
+
+  # --- handoff limits ---
+  handoff_max_repeated_tool_errors:
+    value: 3
+    source: "config:handoff.max_repeated_tool_errors"
+  handoff_summary_max_chars:
+    value: 1000
+    source: "config:bank_api.handoff_summary_max_chars"
+  handoff_reason_codes:
+    value: [user_requested, upset_user, low_confidence, repeated_errors, failed_verification, other]
+    source: "config:bank_api.handoff_reason_codes"
+
+  # --- KYC tier of each seeded customer (read from the DB) ---
+  kyc_tiers_by_customer:
+    value: {1: tier3, 2: tier1, 3: tier1, 4: tier2, 5: tier1, 6: tier1, 7: tier2, 8: tier1, 9: tier2, 10: tier3, 11: tier3, 12: tier1, 13: tier1, 14: tier2, 15: tier3, 16: tier1, 17: tier1, 18: tier3, 19: tier1, 20: tier2}
+    source: "db:accounts.kyc_tier"
+
+scenarios:
+  double_debit:
+    references: [RUB-DB-001, RUB-DB-002]
+    amount_naira: 25000
+    customer: Bola Adeyemi
+    note: "Two identical successful debits a few minutes apart, yesterday."
+  failed_transfer:
+    reference: RUB-03-000037
+    amount_naira: 50000
+    status: failed
+    customer: Fatima Ibrahim
+    failure_reason: Beneficiary bank timeout
+  pending_transfer:
+    reference: RUB-07-000026
+    amount_naira: 15000
+    status: pending
+    customer: Aisha Bello
+  lost_card_demo:
+    customer: Adebayo Ogunleye
+    phone: "+2348031234567"
+    card_last4: "0001"
+  already_blocked_card:
+    customer: Chidi Nwankwo
+    card_last4: "9999"
+
+fictional_bank:
+  name: Rubies Microfinance Bank
+  transfer_fees_nip:
+    up_to_5000_fee_naira: 10
+    from_5001_to_50000_fee_naira: 25
+    above_50000_fee_naira: 50
+    vat_percent: 7.5
+    above_50000_fee_with_vat_naira: 53.75
+    to_rubies_account_fee_naira: 0
+  other_fees_naira:
+    sms_alert: 4
+    debit_card_issuance: 1000
+    card_replacement: 1500
+    certified_statement: 1000
+    mini_statement: 0
+    balance_enquiry: 0
+    savings_account_maintenance: 0
+  loans:
+    management_fee_percent_upfront: 1
+    insurance_percent_upfront: 0.5
+    tenor_months_min: 3
+    tenor_months_max: 12
+    products: [Quick Salary Loan, Small Business Loan]
+    eligibility_note: "Eligibility thresholds come from section A (derived); never retyped here."
+    loan_200k_example:
+      requested_naira: 200000
+      management_fee_naira: 2000
+      insurance_naira: 1000
+      total_upfront_naira: 3000
+      requires:
+        - "account age >= derived.eligibility_min_account_age_days days"
+        - "average monthly inflow >= derived.eligibility_min_avg_monthly_inflow_naira naira"
+        - "no existing active loan"
+        - "KYC tier in derived.eligibility_kyc_tiers_allowed"
+        - "requested amount <= derived.eligibility_requested_amount_max_naira naira"
+        - "requested amount <= average monthly inflow * derived.eligibility_max_loan_to_inflow_multiple"
+  dispute_timelines:
+    acknowledge_hours: 24
+    failed_or_double_debit_working_days: 5
+    auto_reversal_of_failed_transfer_hours: 24
+    loan_or_fee_days: 30
+    general_complaint_days: 14
+  escalation_levels:
+    - level: L1
+      description: "Chat agent ticket"
+    - level: L2
+      description: "Complaints Desk"
+      email: complaints@rubiesmfb.example
+      phone: "0700 000 0001"
+    - level: L3
+      description: "Head of Customer Experience"
+      email: customercare.head@rubiesmfb.example
+    - level: CBN
+      description: "CBN Consumer Protection Department (after the timeline has passed without resolution)"
+      email: cpd@cbn.gov.ng
+  contact:
+    ussd_code: "*000#"
+    card_block_effective: "immediately after confirmation"
+    domains: "fictional contact addresses use the .example domain only"
+  never_ask:
+    - full PIN
+    - PIN
+    - OTP
+    - card CVV
+    - full card number
+    - password
+    - BVN
+    - NIN
+  # Rubies limits are set equal to the CBN reference figures as reported by
+  # secondary sources; single_transaction_limit equals the daily limit because
+  # the framework states a daily cumulative limit.
+  kyc_tiers:
+    tier1:
+      required_documents: "BVN or NIN"
+      single_limit_naira: 50000
+      daily_limit_naira: 50000
+      max_balance_naira: 300000
+    tier2:
+      required_documents: "BVN and NIN"
+      single_limit_naira: 200000
+      daily_limit_naira: 200000
+      max_balance_naira: 500000
+    tier3:
+      required_documents: "BVN and NIN, proof of address, source of funds"
+      single_limit_naira: 5000000
+      daily_limit_naira: 5000000
+      max_balance_naira: "no limit"
+
+real_rules:
+  - id: cbn_how_to_lodge_complaints
+    summary: "CBN explains how a consumer should lodge a complaint and escalate it, and the record-keeping a bank must keep."
+    source_url: "https://www.cbn.gov.ng/FinInc/FinLit/How_Lodge_Complaints.pdf"
+    date_read: 2026-10-27
+    status: verified
+    may_be_out_of_date: true
+  - id: cbn_consumer_protection_regulations_2_0
+    summary: "Revised CBN Consumer Protection Regulations covering complaint handling timelines and consumer redress."
+    source_url: "https://www.cbn.gov.ng/Out/2024/CCD/EXPOSURE%20DRAFT%20REVISED%20CONSUMER%20PROTECTION%20REGULATIONS%202.0.pdf"
+    date_read: 2026-10-27
+    status: PENDING_USER_CONFIRMATION
+    may_be_out_of_date: true
+  - id: cbn_tiered_kyc_secondary
+    summary: "Secondary explanation of CBN tiered KYC: tier names, documents and limits for low-value accounts."
+    source_url: "https://youverify.co/blog/kyc-onboarding-nigeria-fintechs-cbn-guidelines"
+    date_read: 2026-10-27
+    status: PENDING_USER_CONFIRMATION
+    may_be_out_of_date: true
+  - id: cbn_guide_to_charges
+    summary: "CBN Guide to Charges: the permitted fees banks may charge for transfers, cards, statements and alerts."
+    source_url: PENDING_USER_CONFIRMATION
+    date_read: 2026-10-27
+    status: PENDING_USER_CONFIRMATION
+    may_be_out_of_date: true
+  - id: cbn_tiered_kyc_official
+    summary: >-
+      Tiered KYC figures taken from secondary sources that cite CBN circulars
+      FPR/DIR/CIR/GEN/02/001 (18 Jan 2013) and BPS/DIR/GEN/CIR/04/007
+      (11 Sep 2017). The tier limits are not confirmed against the official CBN
+      text. Some sources report different Tier 1 and Tier 2 daily limits
+      (NGN 30,000 and NGN 500,000); those figures were not used.
+    source_url: "https://www.mypryme.com/blog/kyc-tier-limits-nigeria"
+    date_read: 2026-10-27
+    status: secondary_source_only
+    may_be_out_of_date: true
+
+doc_examples:
+  # Illustrative amounts used only in the policy documents.
+  # Appended without changing any existing value.
+  transfer_fee_vat_on_above_50000_naira: 3.75
+  transfer_band_1_max_naira: 5000
+  transfer_band_2_min_naira: 5001
+  transfer_band_2_max_naira: 50000
+  double_debit_amount_naira: 25000
+  failed_transfer_amount_naira: 50000
+  pending_transfer_amount_naira: 15000
+  card_replacement_ready_days: 5

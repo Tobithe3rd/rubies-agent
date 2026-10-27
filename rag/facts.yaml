@@ -226,3 +226,5 @@ doc_examples:
   failed_transfer_amount_naira: 50000
   pending_transfer_amount_naira: 15000
   card_replacement_ready_days: 5
+  loan_200k_management_fee_naira: 2000
+  loan_200k_insurance_fee_naira: 1000

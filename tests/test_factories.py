@@ -118,18 +118,16 @@ class TestFactories:
         msg = str(exc_info.value)
         assert "Unknown" in msg or "not built yet" in msg or "Available" in msg
 
-    def test_known_name_missing_module_raises_not_built_yet(self):
-        # bedrock is in import map but module does not exist
+    def test_known_name_bedrock_is_built(self):
+        # bedrock is in the import map and its module now exists
         cfg = load_config()
-        with pytest.raises(ConfigError) as exc_info:
-            factories.create_llm(cfg)
-        assert "not built yet" in str(exc_info.value)
+        llm = factories.create_llm(cfg)
+        assert llm.describe().startswith("bedrock:")
 
-    def test_real_default_config_raises_not_built_yet_for_each_kind(self):
+    def test_real_default_config_builds_llm_but_not_adapter(self):
         cfg = load_config()
-        with pytest.raises(ConfigError) as exc_info:
-            factories.create_llm(cfg)
-        assert "not built yet" in str(exc_info.value)
+        # llm (bedrock) is now built
+        assert factories.create_llm(cfg) is not None
         # embedder (titan) is now built
         assert factories.create_embedder(cfg) is not None
         # vectorstore (chroma) is now built

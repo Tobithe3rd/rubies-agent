@@ -23,6 +23,7 @@ from core.interfaces import (
 # is expected to call register(kind, name) on its implementations.
 _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("llm", "bedrock"): "providers.llm.bedrock",
+    ("llm", "mock"): "providers.llm.mock",
     ("embedder", "titan"): "providers.embeddings.titan",
     ("embedder", "mock"): "providers.embeddings.mock",
     ("vectorstore", "chroma"): "providers.vectorstore.chroma",
@@ -69,12 +70,16 @@ def _import_module(kind: str, name: str) -> None:
         )
     module_path = _IMPORT_MAP[key]
     try:
-        importlib.import_module(module_path)
+        module = importlib.import_module(module_path)
     except ModuleNotFoundError:
         raise ConfigError(
             f"Implementation '{name}' for kind '{kind}' is not built yet "
             f"(module '{module_path}' not found)."
         )
+    # A test or caller may have reset the registry after the module was first
+    # imported; re-execute it so its register() calls run again.
+    if name not in _REGISTRY.get(kind, {}):
+        importlib.reload(module)
 
 
 def _get_class(kind: str, name: str) -> Any:
@@ -152,6 +157,26 @@ def create_tool_runtime(cfg: AppConfig, session, gateway=None,
     if logger is None:
         logger = JsonlToolLogger(cfg, clock=clock)
     return ToolRuntime(cfg, cfg.tools, session, gateway, search_policy, logger, clock=clock)
+
+
+def create_agent_runner(cfg: AppConfig, session=None, llm=None):
+    """Wire gateway, search, logger, runtime and LLM into an AgentRunner.
+
+    The system prompt is loaded first so a missing/empty
+    agent.system_prompt_path fails fast, naming the key.
+    """
+    from agent.prompts import load_system_prompt
+    from agent.runner import AgentRunner
+
+    system_prompt = load_system_prompt(cfg)  # fail fast naming the key
+    if session is None:
+        from agent.session import SessionState
+
+        session = SessionState()
+    runtime = create_tool_runtime(cfg, session)
+    if llm is None:
+        llm = create_llm(cfg)
+    return AgentRunner(cfg, runtime, llm, system_prompt=system_prompt)
 
 
 # --- build_components ---

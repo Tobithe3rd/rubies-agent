@@ -20,8 +20,16 @@ class LLMConfig(BaseModel):
     model_config = {"extra": "forbid"}
     provider: str = "bedrock"
     model_id: str
-    temperature: float = Field(ge=0.0, le=2.0)
+    temperature: float = Field(ge=0.0, le=1.0)
     max_tokens: int = Field(ge=1)
+
+    @field_validator("provider")
+    @classmethod
+    def known_provider(cls, v: str) -> str:
+        allowed = ["bedrock", "mock"]
+        if v not in allowed:
+            raise ValueError(f"llm.provider must be one of: {', '.join(allowed)}")
+        return v
 
 
 class EmbeddingsConfig(BaseModel):
@@ -158,12 +166,21 @@ class AgentConfig(BaseModel):
     max_history_messages: int = Field(ge=1)
     tool_timeout_seconds: int = Field(ge=1)
     bank_api_timeout_seconds: int = Field(ge=1)
+    max_tool_calls_per_turn: int = Field(ge=1)
+    fallback_message: str
 
     @field_validator("system_prompt_path")
     @classmethod
     def path_not_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("agent.system_prompt_path must not be empty")
+        return v
+
+    @field_validator("fallback_message")
+    @classmethod
+    def fallback_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("agent.fallback_message must not be empty")
         return v
 
 

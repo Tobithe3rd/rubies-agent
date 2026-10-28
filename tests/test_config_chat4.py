@@ -173,3 +173,55 @@ class TestToolsSchema:
         )
         with pytest.raises(ConfigError):
             load_config(config_dir=str(cfg_dir))
+
+
+class TestLLMAndAgentRuntimeConfig:
+    def test_real_config_has_runtime_keys(self, monkeypatch):
+        _set_env(monkeypatch)
+        cfg = load_config(config_dir="config")
+        assert cfg.settings.llm.temperature == 0.2
+        assert cfg.settings.llm.max_tokens == 1024
+        assert cfg.settings.agent.max_tool_calls_per_turn == 8
+        assert cfg.settings.agent.fallback_message.strip()
+
+    def test_temperature_above_one_names_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(cfg_dir / "settings.yaml", "temperature: 0.2", "temperature: 5")
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "temperature" in str(exc.value)
+
+    def test_zero_max_tool_calls_per_turn_names_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            "max_tool_calls_per_turn: 8",
+            "max_tool_calls_per_turn: 0",
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "max_tool_calls_per_turn" in str(exc.value)
+
+    def test_empty_fallback_message_names_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        text = (cfg_dir / "settings.yaml").read_text()
+        text = text.replace(
+            '  fallback_message: "Sorry, something went wrong on my side. Please try again, '
+            'or ask for a human agent and I will pass you over."',
+            '  fallback_message: ""',
+        )
+        (cfg_dir / "settings.yaml").write_text(text)
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "fallback_message" in str(exc.value)
+
+    def test_unknown_llm_provider_names_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(cfg_dir / "settings.yaml", "provider: bedrock", "provider: nonsense")
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "llm.provider" in str(exc.value) or "provider" in str(exc.value)

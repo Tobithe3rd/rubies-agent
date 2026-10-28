@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import asyncio
+import json
+from typing import Any
+
+from strands.types.events import ToolResultEvent
+from strands.types.tools import AgentTool, ToolSpec
+
+from agent.tool_specs import TOOL_SPECS
+
+_JSON_TYPES = {str: "string", int: "integer"}
+
+
+class ToolCallCounter:
+    """Shared per-turn counter. The runner resets it before each user turn."""
+
+    def __init__(self, limit: int):
+        self.limit = int(limit)
+        self.count = 0
+
+    def reset(self) -> None:
+        self.count = 0
+
+
+def build_input_schema(tool_name: str) -> dict:
+    """JSON schema from tool_specs only: never customer_id or a token."""
+    spec = TOOL_SPECS[tool_name]
+    properties = {
+        name: {"type": _JSON_TYPES[expected]}
+        for name, expected in spec["allowed"].items()
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": sorted(spec["required"]),
+    }
+
+
+class StrandsRuntimeTool(AgentTool):
+    """One Strands tool per enabled tools.yaml entry, backed by ToolRuntime."""
+
+    def __init__(self, name: str, description: str, runtime, logger, counter: ToolCallCounter):
+        super().__init__()
+        self._name = name
+        self._description = description
+        self._runtime = runtime
+        self._logger = logger
+        self._counter = counter
+
+    @property
+    def tool_name(self) -> str:
+        return self._name
+
+    @property
+    def tool_spec(self) -> ToolSpec:
+        return {
+            "name": self._name,
+            "description": self._description,
+            "inputSchema": {"json": build_input_schema(self._name)},
+        }
+
+    @property
+    def tool_type(self) -> str:
+        return "python"
+
+    async def stream(self, tool_use, invocation_state: dict[str, Any], **kwargs: Any):
+        args = tool_use.get("input") or {}
+        tool_use_id = tool_use.get("toolUseId", "")
+        self._counter.count += 1
+
+        if self._counter.count > self._counter.limit:
+            envelope = {
+                "ok": False,
+                "tool": self._name,
+                "error": "too_many_tool_calls",
+                "message": "too many tool calls in one turn",
+            }
+            self._log_cap(args, envelope)
+        else:
+            envelope = await asyncio.to_thread(self._runtime.call, self._name, **args)
+
+        status = "success" if envelope.get("ok") else "error"
+        yield ToolResultEvent(
+            {
+                "toolUseId": tool_use_id,
+                "status": status,
+                "content": [{"json": envelope}],
+            }
+        )
+
+    def _log_cap(self, args: dict, envelope: dict) -> None:
+        try:
+            self._logger.log(
+                session_id=self._runtime.session.session_id,
+                tool=self._name,
+                inputs=args,
+                ok=False,
+                error={"code": envelope["error"], "message": envelope["message"]},
+                duration_ms=0,
+            )
+        except Exception:
+            pass
+
+
+def build_strands_tools(cfg, runtime, logger=None, counter: ToolCallCounter | None = None):
+    """Build AgentTool instances for enabled tools; return (tools, counter)."""
+    logger = logger or runtime.logger
+    counter = counter or ToolCallCounter(cfg.settings.agent.max_tool_calls_per_turn)
+    tools: list[AgentTool] = []
+    for name, tool_cfg in cfg.tools.items():
+        if name not in TOOL_SPECS:
+            continue
+        if not getattr(tool_cfg, "enabled", False):
+            continue
+        tools.append(
+            StrandsRuntimeTool(name, tool_cfg.description, runtime, logger, counter)
+        )
+    return tools, counter

@@ -3,7 +3,7 @@ timezone: Africa/Lagos
 llm:
   provider: bedrock
   # set to the Bedrock model/inference profile ID I have access to
-  model_id: "anthropic.claude-haiku-5-5"
+  model_id: "us.anthropic.claude-sonnet-4-6"
   temperature: 0.2
   max_tokens: 1024
 
@@ -64,6 +64,8 @@ agent:
   max_history_messages: 40
   tool_timeout_seconds: 15
   bank_api_timeout_seconds: 10
+  max_tool_calls_per_turn: 8
+  fallback_message: "Sorry, something went wrong on my side. Please try again, or ask for a human agent and I will pass you over."
 
 seed:
   random_seed: 42

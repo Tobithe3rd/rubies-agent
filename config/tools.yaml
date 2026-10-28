@@ -14,7 +14,7 @@ get_mini_statement:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
-  description: "Return the verified customer's recent transactions. Ask how many they want first."
+  description: "Return the verified customer's most recent transactions (date, amount, direction, reference, status). Use it to find a transaction the customer describes; do not ask how many, use the default. Only pass limit if the customer asks for a specific number."
 
 get_transaction_status:
   enabled: true

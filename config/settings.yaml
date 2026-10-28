@@ -55,9 +55,18 @@ logging:
   pending_token_prefix_chars: 4
 
 adapter:
-  type: http_chat
-  host: 0.0.0.0
+  type: cli
+  host: 0.0.0.0        # kept for the future http_chat/Fleet adapter
   port: 8000
+
+adapters:
+  cli:
+    allow_otp_command: true
+    prompt_text: "You: "
+    agent_label: "Rubies: "
+
+acceptance:
+  max_attempts_per_scenario: 2
 
 agent:
   system_prompt_path: prompts/system_prompt.md

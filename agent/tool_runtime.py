@@ -277,6 +277,19 @@ class ToolRuntime:
                 "threshold": data.get("threshold"),
                 "result_count": data.get("result_count"),
             }
+            # Log the top result (never the query) so acceptance checks can
+            # assert the cited chunk and the retrieved figures from the log.
+            results = data.get("results") or []
+            if results:
+                top = results[0]
+                result_for_log["top_result"] = {
+                    "chunk_id": top.get("chunk_id"),
+                    "citation": top.get("citation"),
+                    "doc_title": top.get("doc_title"),
+                    "section_heading": top.get("section_heading"),
+                    "text": top.get("text"),
+                    "score": top.get("score"),
+                }
         error = None
         if not result.get("ok"):
             error = {"code": result.get("error"), "message": result.get("message")}

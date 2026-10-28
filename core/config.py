@@ -159,6 +159,46 @@ class AdapterConfig(BaseModel):
     host: str
     port: int = Field(ge=1, le=65535)
 
+    @field_validator("type")
+    @classmethod
+    def known_type(cls, v: str) -> str:
+        allowed = ["cli"]
+        if v not in allowed:
+            raise ValueError(f"adapter.type must be one of: {', '.join(allowed)}")
+        return v
+
+
+class CliAdapterConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    # strict so a non-bool like "yes" fails instead of being coerced to True
+    allow_otp_command: bool = Field(strict=True)
+    prompt_text: str
+    agent_label: str
+
+    @field_validator("prompt_text")
+    @classmethod
+    def prompt_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("adapters.cli.prompt_text must not be empty")
+        return v
+
+    @field_validator("agent_label")
+    @classmethod
+    def label_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("adapters.cli.agent_label must not be empty")
+        return v
+
+
+class AdaptersConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    cli: CliAdapterConfig
+
+
+class AcceptanceConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    max_attempts_per_scenario: int = Field(ge=1)
+
 
 class AgentConfig(BaseModel):
     model_config = {"extra": "forbid"}
@@ -256,6 +296,8 @@ class Settings(BaseModel):
     handoff: HandoffConfig
     logging: LoggingConfig
     adapter: AdapterConfig
+    adapters: AdaptersConfig
+    acceptance: AcceptanceConfig
     agent: AgentConfig
     bank_api: BankAPIConfig
     startup: StartupConfig

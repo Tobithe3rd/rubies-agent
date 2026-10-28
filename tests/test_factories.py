@@ -124,7 +124,7 @@ class TestFactories:
         llm = factories.create_llm(cfg)
         assert llm.describe().startswith("bedrock:")
 
-    def test_real_default_config_builds_llm_but_not_adapter(self):
+    def test_real_default_config_builds_llm_and_cli_adapter(self):
         cfg = load_config()
         # llm (bedrock) is now built
         assert factories.create_llm(cfg) is not None
@@ -133,7 +133,7 @@ class TestFactories:
         # vectorstore (chroma) is now built
         embedder = factories.create_embedder(cfg)
         assert factories.create_vectorstore(cfg, embedder) is not None
-        # datastore (sqlite) is now built, adapter is not
-        with pytest.raises(ConfigError) as exc_info:
-            factories.create_adapter(cfg)
-        assert "not built yet" in str(exc_info.value)
+        # datastore (sqlite) and the cli adapter are now built
+        assert factories.create_datastore(cfg) is not None
+        adapter = factories.create_adapter(cfg)
+        assert adapter.describe().startswith("cli")

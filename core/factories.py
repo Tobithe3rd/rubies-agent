@@ -28,6 +28,7 @@ _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("embedder", "mock"): "providers.embeddings.mock",
     ("vectorstore", "chroma"): "providers.vectorstore.chroma",
     ("datastore", "sqlite"): "providers.datastore.sqlite",
+    ("adapter", "cli"): "adapters.cli_chat",
     ("adapter", "http_chat"): "adapters.http_chat",
     ("otp_sender", "mock"): "providers.otp.mock",
     ("bank_gateway", "http"): "agent.bank_client",
@@ -125,10 +126,15 @@ def create_datastore(cfg: AppConfig) -> DataStore:
     return cls(cfg.settings.bank_api, cfg.env)
 
 
-def create_adapter(cfg: AppConfig) -> InterfaceAdapter:
+def create_adapter(cfg: AppConfig, runner=None) -> InterfaceAdapter:
     name = cfg.settings.adapter.type
     cls = _get_class("adapter", name)
-    return cls(cfg.settings.adapter, cfg.env)
+    # Startup builds the adapter with no runner (healthcheck only); the CLI
+    # passes one so it can call runner.handle_message. Keeping the no-runner
+    # call as two args also keeps older adapters with (cfg, env) constructors.
+    if runner is None:
+        return cls(cfg, cfg.env)
+    return cls(cfg, cfg.env, runner)
 
 
 def create_otp_sender(cfg: AppConfig) -> OTPSender:

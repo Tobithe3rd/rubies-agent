@@ -91,17 +91,20 @@ class TestStartup:
         assert res.overall == "ok"
         assert len([r for r in res.reports if r.status == "loaded"]) == 5
 
-    def test_default_config_degraded_not_built(self, monkeypatch):
+    def test_default_config_all_components_built(self, monkeypatch):
         from core.config import load_config
         monkeypatch.setattr("core.startup.load_config", lambda config_dir="config": load_config())
         res = run_startup()
-        assert res.overall == "degraded"
-        assert any(r.status == "not_built" for r in res.reports)
+        assert res.overall == "ok"
+        assert all(r.status == "loaded" for r in res.reports)
 
     def test_require_components_true_raises_config_error(self, monkeypatch):
         from core.config import load_config
         cfg = load_config()
         cfg.settings.startup.require_components = True
+        # http_chat is still a placeholder with no module, so it is "not built"
+        # and require_components must fail fast.
+        cfg.settings.adapter.type = "http_chat"
         monkeypatch.setattr("core.startup.load_config", lambda config_dir="config": cfg)
         from core.app import create_app
         from fastapi.testclient import TestClient

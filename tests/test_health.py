@@ -97,7 +97,7 @@ class TestHealth:
             assert "AWS_ACCESS_KEY_ID" not in str(data)
             assert "secret" not in str(data)
 
-    def test_default_config_degraded_200(self, monkeypatch):
+    def test_default_config_ok_200(self, monkeypatch):
         from core.config import load_config
         monkeypatch.setattr("core.startup.load_config", lambda config_dir="config": load_config())
         from fastapi.testclient import TestClient
@@ -106,5 +106,5 @@ class TestHealth:
             response = client.get("/health")
             assert response.status_code == 200
             data = response.json()
-            assert data["status"] == "degraded"
-            assert any(c["status"] == "not_built" for c in data["components"])
+            assert data["status"] == "ok"
+            assert all(c["status"] == "loaded" for c in data["components"])

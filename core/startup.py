@@ -220,6 +220,7 @@ def run_startup(config_dir: str = "config") -> StartupResult:
     logger.info(f"startup overall: {StartupResult(cfg, components, reports).overall}")
     logger.info(f"debug: {cfg.settings.logging.debug}")
     logger.info(f"timezone: {cfg.settings.timezone}")
+    logger.info(f"bank gateway: {cfg.settings.bank_api.gateway}")
     logger.info(f"rag chunking mode: {cfg.settings.rag.chunking.mode}")
 
     if cfg.settings.logging.debug:

@@ -12,12 +12,6 @@ import yaml
 DB_PATH = "data/bank.db"
 FACTS_PATH = "rag/facts.yaml"
 
-# The customers whose tier the seed had to raise, and the tier they moved to.
-EXPECTED_CHANGED = {
-    3: "tier3", 6: "tier3", 8: "tier3", 16: "tier3", 19: "tier3",   # tier1 -> tier3
-    4: "tier3", 9: "tier3", 14: "tier3", 20: "tier3",              # tier2 -> tier3
-    5: "tier2", 12: "tier2", 13: "tier2",                          # tier1 -> tier2
-}
 RANK = {"tier1": 1, "tier2": 2, "tier3": 3}
 
 
@@ -48,14 +42,26 @@ def test_no_balance_exceeds_tier_max():
     assert offenders == []
 
 
-def test_changed_customers_match_expected():
-    # facts.yaml still holds the pre-fix tiers; use it as the baseline.
-    baseline = _facts()["derived"]["kyc_tiers_by_customer"]["value"]
-    changed = {}
+def _lowest_fitting_tier(balance_kobo, caps):
+    for name, limits in sorted(caps.items(), key=lambda kv: RANK[kv[0]]):
+        cap = limits.get("max_balance_naira")
+        if cap == "no limit" or balance_kobo <= int(cap) * 100:
+            return name
+    return "tier3"
+
+
+def test_tiers_follow_balance_caps():
+    # The seed raises each account to the lowest tier whose max balance fits and
+    # never lowers a tier. Balances (and so the set of raised customers) shift
+    # with the run day, so assert the rule rather than a frozen snapshot.
+    facts = _facts()
+    caps = facts["fictional_bank"]["kyc_tiers"]
+    baseline = facts["derived"]["kyc_tiers_by_customer"]["value"]
     for r in _real_rows():
         cid = r["customer_id"]
-        if r["kyc_tier"] != baseline[cid]:
-            changed[cid] = r["kyc_tier"]
-        # a tier is never lowered
+        floor = _lowest_fitting_tier(r["balance_kobo"], caps)
+        assert RANK[r["kyc_tier"]] >= RANK[floor], (
+            f"customer {cid}: tier {r['kyc_tier']} is below the lowest fitting tier {floor}"
+        )
+        # a tier is never lowered below the pre-fix baseline
         assert RANK[r["kyc_tier"]] >= RANK[baseline[cid]], f"customer {cid} tier was lowered"
-    assert changed == EXPECTED_CHANGED

@@ -71,6 +71,7 @@ startup:
 bank_api:
   db_path: data/bank.db
   store_type: sqlite
+  gateway: http
   otp_length: 6
   otp_ttl_seconds: 300
   otp_max_attempts: 3

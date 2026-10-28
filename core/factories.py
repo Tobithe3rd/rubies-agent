@@ -5,6 +5,7 @@ from typing import Any
 
 from core.config import AppConfig, ConfigError
 from core.interfaces import (
+    BankGateway,
     DataStore,
     Embedder,
     InterfaceAdapter,
@@ -28,6 +29,7 @@ _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("datastore", "sqlite"): "providers.datastore.sqlite",
     ("adapter", "http_chat"): "adapters.http_chat",
     ("otp_sender", "mock"): "providers.otp.mock",
+    ("bank_gateway", "http"): "agent.bank_client",
 }
 
 _REGISTRY: dict[str, dict[str, Any]] = {
@@ -37,6 +39,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     "datastore": {},
     "adapter": {},
     "otp_sender": {},
+    "bank_gateway": {},
 }
 
 
@@ -129,6 +132,12 @@ def create_otp_sender(cfg: AppConfig) -> OTPSender:
     return cls(cfg.settings.bank_api, cfg.env)
 
 
+def create_bank_gateway(cfg: AppConfig) -> BankGateway:
+    name = cfg.settings.bank_api.gateway
+    cls = _get_class("bank_gateway", name)
+    return cls(cfg, cfg.env)
+
+
 # --- build_components ---
 
 def build_components(cfg: AppConfig) -> dict[str, Any]:
@@ -137,10 +146,12 @@ def build_components(cfg: AppConfig) -> dict[str, Any]:
     vectorstore = create_vectorstore(cfg, embedder)
     datastore = create_datastore(cfg)
     adapter = create_adapter(cfg)
+    bank_gateway = create_bank_gateway(cfg)
     return {
         "llm": llm,
         "embedder": embedder,
         "vectorstore": vectorstore,
         "datastore": datastore,
         "adapter": adapter,
+        "bank_gateway": bank_gateway,
     }

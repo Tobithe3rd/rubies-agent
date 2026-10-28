@@ -277,3 +277,58 @@ class OTPSender(abc.ABC):
     @abc.abstractmethod
     def send(self, phone: str, code: str) -> None:
         ...
+
+
+class BankGateway(abc.ABC):
+    """Agent-side client for the mock bank API.
+
+    Identity rule: no method takes customer_id. The only session identity is
+    `token`; `pending_token` is the single-use confirmation token. The phone
+    is used only to start/complete verification. Implementations must send the
+    token in the same header the API expects and must never put it in errors.
+    """
+
+    @abc.abstractmethod
+    def verify_start(self, phone: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def verify_complete(self, phone: str, otp: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def get_balance(self, token: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def get_mini_statement(self, token: str, limit: Optional[int] = None) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def get_transaction_status(self, token: str, reference: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def propose_dispute(self, token: str, reference: str, reason: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def propose_card_block(self, token: str, last4: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def confirm_action(self, token: str, pending_token: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def check_loan_eligibility(self, token: str, amount: int) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def get_loan_status(self, token: str) -> dict:
+        ...
+
+    @abc.abstractmethod
+    def create_handoff(self, summary: str, token: Optional[str] = None,
+                       reason: Optional[str] = None) -> dict:
+        ...

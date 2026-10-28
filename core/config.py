@@ -178,6 +178,7 @@ class BankAPIConfig(BaseModel):
     model_config = {"extra": "forbid"}
     db_path: str
     store_type: str = "sqlite"
+    gateway: str = "http"
     otp_length: int = Field(ge=4, le=10)
     otp_ttl_seconds: int = Field(ge=60)
     otp_max_attempts: int = Field(ge=1, le=10)
@@ -195,6 +196,13 @@ class BankAPIConfig(BaseModel):
     def only_mock_supported(cls, v: str) -> str:
         if v != "mock":
             raise ValueError("only 'mock' is supported for otp_delivery at this stage")
+        return v
+
+    @field_validator("gateway")
+    @classmethod
+    def only_http_supported(cls, v: str) -> str:
+        if v != "http":
+            raise ValueError("only 'http' is supported for bank_api.gateway at this stage")
         return v
 
     @field_validator("mini_statement_default_n")

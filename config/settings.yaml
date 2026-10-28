@@ -1,7 +1,9 @@
+timezone: Africa/Lagos
+
 llm:
   provider: bedrock
   # set to the Bedrock model/inference profile ID I have access to
-  model_id: "CHANGE_ME"
+  model_id: "anthropic.claude-haiku-5-5"
   temperature: 0.2
   max_tokens: 1024
 
@@ -51,6 +53,12 @@ adapter:
   type: http_chat
   host: 0.0.0.0
   port: 8000
+
+agent:
+  system_prompt_path: prompts/system_prompt.md
+  max_history_messages: 40
+  tool_timeout_seconds: 15
+  bank_api_timeout_seconds: 10
 
 seed:
   random_seed: 42

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -137,6 +138,21 @@ class AdapterConfig(BaseModel):
     port: int = Field(ge=1, le=65535)
 
 
+class AgentConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    system_prompt_path: str
+    max_history_messages: int = Field(ge=1)
+    tool_timeout_seconds: int = Field(ge=1)
+    bank_api_timeout_seconds: int = Field(ge=1)
+
+    @field_validator("system_prompt_path")
+    @classmethod
+    def path_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("agent.system_prompt_path must not be empty")
+        return v
+
+
 class SeedConfig(BaseModel):
     model_config = {"extra": "forbid"}
     random_seed: int = 42
@@ -192,6 +208,7 @@ class BankAPIConfig(BaseModel):
 
 class Settings(BaseModel):
     model_config = {"extra": "forbid"}
+    timezone: str
     llm: LLMConfig
     embeddings: EmbeddingsConfig
     vectorstore: VectorstoreConfig
@@ -200,12 +217,39 @@ class Settings(BaseModel):
     handoff: HandoffConfig
     logging: LoggingConfig
     adapter: AdapterConfig
+    agent: AgentConfig
     bank_api: BankAPIConfig
     startup: StartupConfig
     seed: SeedConfig
 
+    @field_validator("timezone")
+    @classmethod
+    def known_timezone(cls, v: str) -> str:
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError, KeyError):
+            raise ValueError(f"unknown IANA timezone: {v!r}")
+        return v
+
 
 # --- tools ---
+
+# The tool contract (ARCHITECTURE.md section 6). tools.yaml keys must be one of
+# these; anything else is a typo and fails fast at startup.
+KNOWN_TOOLS = frozenset({
+    "verify_customer",
+    "get_balance",
+    "get_mini_statement",
+    "get_transaction_status",
+    "open_dispute",
+    "block_card",
+    "check_loan_eligibility",
+    "get_loan_status",
+    "handoff_to_human",
+    "search_policy",
+    "confirm_action",
+})
+
 
 class ToolConfig(BaseModel):
     model_config = {"extra": "forbid"}
@@ -213,6 +257,13 @@ class ToolConfig(BaseModel):
     requires_confirmation: bool
     requires_verified_session: bool
     description: str
+
+    @field_validator("description")
+    @classmethod
+    def description_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("description must not be empty")
+        return v
 
 
 class ToolsConfig(BaseModel):
@@ -305,6 +356,9 @@ def load_config(config_dir: str = "config") -> AppConfig:
         raw_tools = {}
 
     for key, value in raw_tools.items():
+        if key not in KNOWN_TOOLS:
+            errors.append(f"tools.yaml -> {key}: unknown tool name")
+            continue
         try:
             tools[key] = ToolConfig.model_validate(value)
         except ValidationError as exc:

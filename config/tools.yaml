@@ -2,58 +2,64 @@ verify_customer:
   enabled: true
   requires_confirmation: false
   requires_verified_session: false
-  description: "Verify a customer's identity using their phone number and one-time passcode."
+  description: "Verify the customer with their phone number and the one-time passcode already sent to that number."
 
 get_balance:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
-  description: "Retrieve the current account balance for the verified customer."
+  description: "Return the verified customer's current account balance."
 
 get_mini_statement:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
-  description: "Retrieve a short statement of recent transactions for the verified customer."
+  description: "Return the verified customer's recent transactions. Ask how many they want first."
 
 get_transaction_status:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
-  description: "Check the status of a specific transaction by its reference."
+  description: "Look up one transaction by the reference the customer gives and report its status and failure reason."
 
 open_dispute:
   enabled: true
   requires_confirmation: true
   requires_verified_session: true
-  description: "Propose opening a dispute; requires confirmation before execution."
+  description: "Propose a dispute for a transaction. This only proposes; the customer must confirm in their next message before anything changes."
 
 block_card:
   enabled: true
   requires_confirmation: true
   requires_verified_session: true
-  description: "Propose blocking a card; requires confirmation before execution."
+  description: "Propose blocking a card by its last four digits. This only proposes; the customer must confirm in their next message before anything changes."
 
 check_loan_eligibility:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
-  description: "Check whether the verified customer is eligible for a loan."
+  description: "Check whether the customer qualifies for a loan of the naira amount they asked for, and explain which requirements passed or failed."
 
 get_loan_status:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
-  description: "Retrieve the current status of the verified customer's loan."
+  description: "Return the verified customer's active loan status and next repayment."
 
 handoff_to_human:
   enabled: true
   requires_confirmation: false
   requires_verified_session: false
-  description: "Initiate a handoff to a human agent with a summary of the conversation."
+  description: "Hand the conversation to a human agent with a short summary and a reason code."
 
 search_policy:
   enabled: true
   requires_confirmation: false
   requires_verified_session: false
-  description: "Search policy documents using retrieved chunks and citations."
+  description: "Search the Rubies policy documents and answer with the document and section. Answer only from the text that is returned."
+
+confirm_action:
+  enabled: true
+  requires_confirmation: false
+  requires_verified_session: true
+  description: "Execute the dispute or card block that the customer confirmed in their latest message."

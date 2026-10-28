@@ -616,11 +616,11 @@ if [ -z "${base:-}" ]; then
   skip "o1. protected paths untouched (no base ref found)"
   skip "o2. manifest drift (no base ref found)"
 else
-  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' 2>/dev/null; then
-    check "o1. protected paths untouched since ${base} (providers/llm excepted)" 1
+  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' 2>/dev/null; then
+    check "o1. protected paths untouched since ${base} (providers/llm and rag/query_rewrite.py excepted)" 1
   else
-    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' 2>/dev/null | tr '\n' ' ')
-    check "o1. protected paths untouched since ${base} (providers/llm excepted)" 0 "modified: $changed"
+    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' 2>/dev/null | tr '\n' ' ')
+    check "o1. protected paths untouched since ${base} (providers/llm and rag/query_rewrite.py excepted)" 0 "modified: $changed"
   fi
 
   j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '

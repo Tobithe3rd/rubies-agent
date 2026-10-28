@@ -89,7 +89,7 @@ class TestStartup:
 
         res = run_startup()
         assert res.overall == "ok"
-        assert len([r for r in res.reports if r.status == "loaded"]) == 5
+        assert len([r for r in res.reports if r.status == "loaded"]) == 6
 
     def test_default_config_all_components_built(self, monkeypatch):
         from core.config import load_config

@@ -80,6 +80,55 @@ class ChunkingConfig(BaseModel):
         return v
 
 
+class QueryRewriteConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    enabled: bool = Field(strict=True)
+    implementation: str = "llm"
+    # null means "use llm.model_id"
+    model_id: Optional[str] = None
+    prompt_path: str
+    max_input_chars: int = Field(ge=1)
+    max_output_chars: int = Field(ge=1)
+    max_tokens: int = Field(ge=1)
+    temperature: float = Field(ge=0.0, le=1.0)
+    timeout_seconds: float = Field(gt=0)
+    log_text: bool = Field(strict=True)
+
+    @field_validator("implementation")
+    @classmethod
+    def known_implementation(cls, v: str) -> str:
+        allowed = ["llm", "passthrough"]
+        if v not in allowed:
+            raise ValueError(
+                f"rag.query_rewrite.implementation must be one of: {', '.join(allowed)}"
+            )
+        return v
+
+    @field_validator("prompt_path")
+    @classmethod
+    def path_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("rag.query_rewrite.prompt_path must not be empty")
+        return v
+
+    @field_validator("model_id")
+    @classmethod
+    def model_id_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("rag.query_rewrite.model_id must be null or a non-empty string")
+        return v
+
+    @field_validator("max_output_chars")
+    @classmethod
+    def output_le_input(cls, v: int, info) -> int:
+        max_input = info.data.get("max_input_chars")
+        if max_input is not None and v > max_input:
+            raise ValueError(
+                "rag.query_rewrite.max_output_chars must be <= max_input_chars"
+            )
+        return v
+
+
 class RAGConfig(BaseModel):
     model_config = {"extra": "forbid"}
     docs_path: str
@@ -92,6 +141,7 @@ class RAGConfig(BaseModel):
     max_failed_retrievals: int = Field(ge=0)
     max_query_chars: int = Field(ge=50, le=5000)
     no_result_message: str
+    query_rewrite: QueryRewriteConfig
 
     @field_validator("no_result_message")
     @classmethod

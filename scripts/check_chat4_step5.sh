@@ -462,7 +462,7 @@ def scenario1(state, counter):
         str((p["result"]["top_result"] or {}).get("chunk_id", "")).startswith("RUB-DOC-01")
         for p in tops
     ), "logged top chunk is not RUB-DOC-01"
-    other = [p for p in lines if p.get("tool") != "search_policy"]
+    other = [p for p in lines if "event" not in p and p.get("tool") != "search_policy"]
     assert not other, f"unexpected tool lines: {[p.get('tool') for p in other]}"
     reply = state.transcript[-1][1]
     assert ("RUB-DOC-01" in reply) or (RUB_DOC01_TITLE in reply), "reply missing fee-schedule citation"
@@ -668,7 +668,11 @@ def integrity():
             payload = json.loads(raw)
         except Exception:
             return False, f"invalid JSON line: {raw[:120]}", len(lines)
-        for key in ("time", "session_id", "tool", "inputs", "ok"):
+        # Tool lines carry tool+inputs; event lines (e.g. query_rewrite) do not.
+        required = ("time", "session_id", "ok")
+        if "event" not in payload:
+            required = ("time", "session_id", "tool", "inputs", "ok")
+        for key in required:
             if key not in payload:
                 return False, f"line missing key {key}", len(lines)
         if not str(payload.get("time", "")).endswith("+01:00"):
@@ -742,15 +746,16 @@ if ! git rev-parse -q --verify "$base" >/dev/null 2>&1; then
   base=$(git log --format=%H --grep='^Chat 3 done' -1 2>/dev/null || true)
 fi
 PROTECTED=(bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh)
+# Chat 5 adds rag/query_rewrite.py by design; exclude only that new planned file.
 if [ -z "${base:-}" ]; then
   skip "m1. protected paths untouched (no base ref found)"
   skip "m2. manifest drift (no base ref found)"
 else
-  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' 2>/dev/null; then
-    check "m1. protected paths untouched since ${base} (providers/llm excepted)" 1
+  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' 2>/dev/null; then
+    check "m1. protected paths untouched since ${base} (providers/llm and rag/query_rewrite.py excepted)" 1
   else
-    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' 2>/dev/null | tr '\n' ' ')
-    check "m1. protected paths untouched since ${base} (providers/llm excepted)" 0 "modified: $changed"
+    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' 2>/dev/null | tr '\n' ' ')
+    check "m1. protected paths untouched since ${base} (providers/llm and rag/query_rewrite.py excepted)" 0 "modified: $changed"
   fi
 
   j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '

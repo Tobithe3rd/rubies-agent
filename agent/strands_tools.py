@@ -40,13 +40,22 @@ def build_input_schema(tool_name: str) -> dict:
 class StrandsRuntimeTool(AgentTool):
     """One Strands tool per enabled tools.yaml entry, backed by ToolRuntime."""
 
-    def __init__(self, name: str, description: str, runtime, logger, counter: ToolCallCounter):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        runtime,
+        logger,
+        counter: ToolCallCounter,
+        query_rewriter=None,
+    ):
         super().__init__()
         self._name = name
         self._description = description
         self._runtime = runtime
         self._logger = logger
         self._counter = counter
+        self._query_rewriter = query_rewriter
 
     @property
     def tool_name(self) -> str:
@@ -65,7 +74,7 @@ class StrandsRuntimeTool(AgentTool):
         return "python"
 
     async def stream(self, tool_use, invocation_state: dict[str, Any], **kwargs: Any):
-        args = tool_use.get("input") or {}
+        args = dict(tool_use.get("input") or {})
         tool_use_id = tool_use.get("toolUseId", "")
         self._counter.count += 1
 
@@ -78,6 +87,8 @@ class StrandsRuntimeTool(AgentTool):
             }
             self._log_cap(args, envelope)
         else:
+            if self._name == "search_policy":
+                args = self._rewrite_query(args)
             envelope = await asyncio.to_thread(self._runtime.call, self._name, **args)
 
         status = "success" if envelope.get("ok") else "error"
@@ -88,6 +99,29 @@ class StrandsRuntimeTool(AgentTool):
                 "content": [{"json": envelope}],
             }
         )
+
+    def _rewrite_query(self, args: dict) -> dict:
+        """Rewrite the search query before retrieval; never break retrieval."""
+        query = args.get("query")
+        if self._query_rewriter is None or not isinstance(query, str) or not query.strip():
+            return args
+        try:
+            from rag.query_rewrite import rewrite_for_search
+
+            result = rewrite_for_search(
+                query,
+                rewriter=self._query_rewriter,
+                logger=self._logger,
+                session_id=getattr(self._runtime.session, "session_id", ""),
+                config=getattr(self._runtime, "config", None),
+            )
+        except Exception:
+            return args
+        if result.applied and result.ok and str(result.rewritten).strip():
+            args["query"] = result.rewritten
+        else:
+            args["query"] = query
+        return args
 
     def _log_cap(self, args: dict, envelope: dict) -> None:
         try:
@@ -103,10 +137,18 @@ class StrandsRuntimeTool(AgentTool):
             pass
 
 
-def build_strands_tools(cfg, runtime, logger=None, counter: ToolCallCounter | None = None):
+def build_strands_tools(
+    cfg,
+    runtime,
+    logger=None,
+    counter: ToolCallCounter | None = None,
+    query_rewriter=None,
+):
     """Build AgentTool instances for enabled tools; return (tools, counter)."""
     logger = logger or runtime.logger
     counter = counter or ToolCallCounter(cfg.settings.agent.max_tool_calls_per_turn)
+    if query_rewriter is None:
+        query_rewriter = _default_query_rewriter(cfg)
     tools: list[AgentTool] = []
     for name, tool_cfg in cfg.tools.items():
         if name not in TOOL_SPECS:
@@ -114,6 +156,21 @@ def build_strands_tools(cfg, runtime, logger=None, counter: ToolCallCounter | No
         if not getattr(tool_cfg, "enabled", False):
             continue
         tools.append(
-            StrandsRuntimeTool(name, tool_cfg.description, runtime, logger, counter)
+            StrandsRuntimeTool(
+                name, tool_cfg.description, runtime, logger, counter, query_rewriter
+            )
         )
     return tools, counter
+
+
+def _default_query_rewriter(cfg, llm=None):
+    """Passthrough when the config has no query_rewrite block (e.g. tests)."""
+    from rag.query_rewrite import PassthroughQueryRewriter
+
+    settings = getattr(cfg, "settings", None)
+    rag = getattr(settings, "rag", None)
+    if getattr(rag, "query_rewrite", None) is None:
+        return PassthroughQueryRewriter()
+    from core.factories import create_query_rewriter
+
+    return create_query_rewriter(cfg, llm)

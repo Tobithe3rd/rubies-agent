@@ -49,11 +49,27 @@ class BedrockLLM(LLMProvider):
             )
         return self._model
 
-    def complete(self, prompt: str, system=None) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system=None,
+        temperature=None,
+        max_tokens=None,
+    ) -> str:
         from strands import Agent
+        from strands.models import BedrockModel
 
+        if temperature is None and max_tokens is None:
+            model = self.get_model()
+        else:
+            model = BedrockModel(
+                model_id=self.model_id,
+                region_name=self.region,
+                temperature=self.temperature if temperature is None else temperature,
+                max_tokens=self.max_tokens if max_tokens is None else max_tokens,
+            )
         agent = Agent(
-            model=self.get_model(),
+            model=model,
             system_prompt=system,
             callback_handler=None,
             name="rubies-complete",

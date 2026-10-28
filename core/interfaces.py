@@ -58,7 +58,55 @@ class LLMProvider(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def complete(self, prompt: str, system: Optional[str] = None) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """One-shot completion. Implementations may ignore the two overrides."""
+        ...
+
+
+@dataclass
+class RewriteResult:
+    """Outcome of one query rewrite. A rewrite never raises.
+
+    `rewritten` is always safe to use for retrieval: on any failure it is the
+    original query. `applied` is True only when a rewriter's validated output
+    replaced the original text. `fallback_used` is True when a rewrite was
+    attempted and rejected/failed.
+    """
+
+    rewritten: str
+    applied: bool
+    ok: bool
+    duration_ms: int
+    model_id: Optional[str] = None
+    error: Optional[str] = None
+    fallback_used: bool = False
+    original_len: int = 0
+    rewritten_len: int = 0
+
+
+class QueryRewriter(abc.ABC):
+    """Turns a customer message into a plain-English policy search query.
+
+    Implementations must never raise from rewrite(): on any problem they
+    return a RewriteResult whose `rewritten` is the original query.
+    """
+
+    @abc.abstractmethod
+    def describe(self) -> str:
+        ...
+
+    @abc.abstractmethod
+    def healthcheck(self) -> HealthStatus:
+        ...
+
+    @abc.abstractmethod
+    def rewrite(self, query: str) -> RewriteResult:
         ...
 
 

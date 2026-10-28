@@ -78,3 +78,30 @@ class JsonlToolLogger:
         except Exception as exc:
             # Logging must never break a tool call.
             print(f"warning: could not write tool log {self.path}: {exc}", file=sys.stderr)
+
+    def log_event(
+        self,
+        event: str,
+        *,
+        session_id: str,
+        fields: Optional[dict] = None,
+        duration_ms: int = 0,
+    ) -> None:
+        """Append one flat event line (e.g. query_rewrite).
+
+        `fields` are redacted with the same rules as tool inputs. The event
+        name and session id always win over any same-named field.
+        """
+        payload: dict[str, Any] = dict(self.redact(fields or {}))
+        payload["time"] = self.clock.iso_now()
+        payload["event"] = event
+        payload["session_id"] = session_id
+        payload["duration_ms"] = int(duration_ms)
+
+        try:
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, default=str) + "\n")
+                handle.flush()
+        except Exception as exc:
+            # Logging must never break a tool call.
+            print(f"warning: could not write event log {self.path}: {exc}", file=sys.stderr)

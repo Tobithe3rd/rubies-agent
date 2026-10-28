@@ -17,7 +17,7 @@ class AgentRunner:
     validated ToolRuntime, which injects the token from SessionState.
     """
 
-    def __init__(self, config, runtime, llm, system_prompt: str | None = None):
+    def __init__(self, config, runtime, llm, system_prompt: str | None = None, query_rewriter=None):
         from strands import Agent
         from strands.agent.conversation_manager import SlidingWindowConversationManager
 
@@ -28,7 +28,12 @@ class AgentRunner:
         self.logger = runtime.logger
         self.system_prompt = system_prompt or load_system_prompt(config)
 
-        self.tools, self.counter = build_strands_tools(config, runtime, self.logger)
+        from agent.strands_tools import _default_query_rewriter
+
+        self.query_rewriter = query_rewriter or _default_query_rewriter(config, llm)
+        self.tools, self.counter = build_strands_tools(
+            config, runtime, self.logger, query_rewriter=self.query_rewriter
+        )
         model = llm.get_model() if hasattr(llm, "get_model") else llm
         self.agent = Agent(
             model=model,

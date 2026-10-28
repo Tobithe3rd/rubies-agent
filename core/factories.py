@@ -11,6 +11,7 @@ from core.interfaces import (
     InterfaceAdapter,
     LLMProvider,
     OTPSender,
+    QueryRewriter,
     VectorStore,
 )
 
@@ -32,6 +33,8 @@ _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("adapter", "http_chat"): "adapters.http_chat",
     ("otp_sender", "mock"): "providers.otp.mock",
     ("bank_gateway", "http"): "agent.bank_client",
+    ("query_rewriter", "llm"): "rag.query_rewrite",
+    ("query_rewriter", "passthrough"): "rag.query_rewrite",
 }
 
 _REGISTRY: dict[str, dict[str, Any]] = {
@@ -42,6 +45,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     "adapter": {},
     "otp_sender": {},
     "bank_gateway": {},
+    "query_rewriter": {},
 }
 
 
@@ -147,6 +151,19 @@ def create_bank_gateway(cfg: AppConfig) -> BankGateway:
     name = cfg.settings.bank_api.gateway
     cls = _get_class("bank_gateway", name)
     return cls(cfg, cfg.env)
+
+
+def query_rewriter_name(cfg: AppConfig) -> str:
+    """The configured implementation, or passthrough when rewriting is off."""
+    qr = cfg.settings.rag.query_rewrite
+    return qr.implementation if qr.enabled else "passthrough"
+
+
+def create_query_rewriter(cfg: AppConfig, llm=None) -> QueryRewriter:
+    qr = cfg.settings.rag.query_rewrite
+    name = query_rewriter_name(cfg)
+    cls = _get_class("query_rewriter", name)
+    return cls(qr, llm)
 
 
 def create_tool_runtime(cfg: AppConfig, session, gateway=None,

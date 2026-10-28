@@ -65,6 +65,7 @@ def run_startup(config_dir: str = "config") -> StartupResult:
         ("embedder", factories.create_embedder, [cfg]),
         ("vectorstore", factories.create_vectorstore, [cfg, None]),  # embedder filled later
         ("llm", factories.create_llm, [cfg]),
+        ("query_rewriter", factories.create_query_rewriter, [cfg, None]),
         ("datastore", factories.create_datastore, [cfg]),
         ("adapter", factories.create_adapter, [cfg]),
     ]
@@ -95,6 +96,8 @@ def run_startup(config_dir: str = "config") -> StartupResult:
                 implementation = cfg.settings.vectorstore.type
             elif kind == "llm":
                 implementation = cfg.settings.llm.provider
+            elif kind == "query_rewriter":
+                implementation = factories.query_rewriter_name(cfg)
             elif kind == "datastore":
                 implementation = cfg.settings.bank_api.store_type
             elif kind == "adapter":
@@ -128,6 +131,8 @@ def run_startup(config_dir: str = "config") -> StartupResult:
                     instance = factories.create_vectorstore(cfg, loaded_embedder)
             elif kind == "llm":
                 instance = factories.create_llm(cfg)
+            elif kind == "query_rewriter":
+                instance = factories.create_query_rewriter(cfg, components.get("llm"))
             elif kind == "datastore":
                 instance = factories.create_datastore(cfg)
             elif kind == "adapter":
@@ -218,6 +223,7 @@ def run_startup(config_dir: str = "config") -> StartupResult:
             f"description={r.description} healthy={r.healthy} detail={r.detail}"
         )
     logger.info(f"startup overall: {StartupResult(cfg, components, reports).overall}")
+    logger.info(f"query rewriter: {factories.query_rewriter_name(cfg)}")
     logger.info(f"debug: {cfg.settings.logging.debug}")
     logger.info(f"timezone: {cfg.settings.timezone}")
     logger.info(f"bank gateway: {cfg.settings.bank_api.gateway}")

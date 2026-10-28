@@ -173,6 +173,8 @@ class MockLLM(LLMProvider):
         self.cfg = cfg
         self.env = env
         self.model = ScriptedLLM()
+        # Optional fixed replies for the one-shot complete() path (query rewrite).
+        self.complete_responses: list[str] = []
 
     def describe(self) -> str:
         return "mock:scripted"
@@ -183,9 +185,20 @@ class MockLLM(LLMProvider):
     def get_model(self) -> ScriptedLLM:
         return self.model
 
-    def complete(self, prompt: str, system: Optional[str] = None) -> str:
-        # The agent path uses get_model(); this is only for the provider interface.
+    def complete(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        # The agent path uses get_model(); this is only for complete() callers.
+        if self.complete_responses:
+            return self.complete_responses.pop(0)
         return ""
+
+    def load_complete_responses(self, responses: list[str]) -> None:
+        self.complete_responses = list(responses)
 
     def load_scripts(self, scripts: list[Script]) -> None:
         self.model.load_scripts(scripts)

@@ -37,6 +37,19 @@ rag:
   max_failed_retrievals: 2
   max_query_chars: 1000
   no_result_message: "No relevant policy information was found. Do not guess. Tell the customer you do not know and offer a human handoff."
+  # Pidgin / messy customer messages are rewritten to plain English by a small
+  # separate LLM call before retrieval. Config picks the implementation.
+  query_rewrite:
+    enabled: true
+    implementation: "llm"
+    model_id: null            # null = use llm.model_id
+    prompt_path: prompts/query_rewrite.md
+    max_input_chars: 1000
+    max_output_chars: 200
+    max_tokens: 128
+    temperature: 0.0
+    timeout_seconds: 45
+    log_text: false           # true logs original/rewritten text (also debug)
 
 session:
   expiry_minutes: 15

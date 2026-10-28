@@ -44,10 +44,15 @@ session:
 
 handoff:
   max_repeated_tool_errors: 3
+  max_failed_retrievals: 2
+  max_failed_verifications: 3
 
 logging:
   tool_log_path: logs/tool_calls.jsonl
   debug: false
+  redact_keys: [otp, token, session_token, authorization]
+  mask_phone_keep_last: 4
+  pending_token_prefix_chars: 4
 
 adapter:
   type: http_chat

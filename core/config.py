@@ -123,12 +123,26 @@ class SessionConfig(BaseModel):
 class HandoffConfig(BaseModel):
     model_config = {"extra": "forbid"}
     max_repeated_tool_errors: int = Field(ge=1)
+    max_failed_retrievals: int = Field(ge=1)
+    max_failed_verifications: int = Field(ge=1)
 
 
 class LoggingConfig(BaseModel):
     model_config = {"extra": "forbid"}
     tool_log_path: str
     debug: bool
+    redact_keys: list[str] = Field(min_length=1)
+    mask_phone_keep_last: int = Field(ge=1)
+    pending_token_prefix_chars: int = Field(ge=1)
+
+    @field_validator("redact_keys")
+    @classmethod
+    def redact_keys_not_empty(cls, v: list[str]) -> list[str]:
+        if not v or any(not key or not key.strip() for key in v):
+            raise ValueError(
+                "logging.redact_keys must be a non-empty list of non-empty strings"
+            )
+        return v
 
 
 class AdapterConfig(BaseModel):

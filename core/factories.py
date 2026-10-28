@@ -138,6 +138,22 @@ def create_bank_gateway(cfg: AppConfig) -> BankGateway:
     return cls(cfg, cfg.env)
 
 
+def create_tool_runtime(cfg: AppConfig, session, gateway=None,
+                        search_policy=None, logger=None, clock=None):
+    """Wire the validated tool runtime. Imports stay lazy to avoid cycles."""
+    from agent.tool_logger import JsonlToolLogger
+    from agent.tool_runtime import ToolRuntime
+
+    if gateway is None:
+        gateway = create_bank_gateway(cfg)
+    if search_policy is None:
+        from rag.search import build_search_policy
+        search_policy = build_search_policy(cfg)
+    if logger is None:
+        logger = JsonlToolLogger(cfg, clock=clock)
+    return ToolRuntime(cfg, cfg.tools, session, gateway, search_policy, logger, clock=clock)
+
+
 # --- build_components ---
 
 def build_components(cfg: AppConfig) -> dict[str, Any]:

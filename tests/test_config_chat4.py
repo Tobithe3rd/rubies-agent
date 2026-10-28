@@ -56,6 +56,75 @@ class TestAgentAndTimezoneConfig:
         assert "tool_timeout_seconds" in str(exc.value)
 
 
+class TestToolLoggingAndHandoffConfig:
+    def test_real_config_has_logging_and_handoff_keys(self, monkeypatch):
+        _set_env(monkeypatch)
+        cfg = load_config(config_dir="config")
+        assert cfg.settings.logging.redact_keys == [
+            "otp", "token", "session_token", "authorization",
+        ]
+        assert cfg.settings.logging.mask_phone_keep_last == 4
+        assert cfg.settings.logging.pending_token_prefix_chars == 4
+        assert cfg.settings.handoff.max_failed_retrievals == 2
+        assert cfg.settings.handoff.max_failed_verifications == 3
+
+    def test_empty_redact_keys_fails_naming_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            "redact_keys: [otp, token, session_token, authorization]",
+            "redact_keys: []",
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "redact_keys" in str(exc.value)
+
+    def test_zero_mask_phone_fails_naming_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(cfg_dir / "settings.yaml", "mask_phone_keep_last: 4", "mask_phone_keep_last: 0")
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "mask_phone_keep_last" in str(exc.value)
+
+    def test_zero_pending_prefix_fails_naming_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            "pending_token_prefix_chars: 4",
+            "pending_token_prefix_chars: 0",
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "pending_token_prefix_chars" in str(exc.value)
+
+    def test_zero_max_failed_retrievals_fails_naming_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            "  max_failed_retrievals: 2\n  max_failed_verifications: 3",
+            "  max_failed_retrievals: 0\n  max_failed_verifications: 3",
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "max_failed_retrievals" in str(exc.value)
+
+    def test_zero_max_failed_verifications_fails_naming_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            "  max_failed_retrievals: 2\n  max_failed_verifications: 3",
+            "  max_failed_retrievals: 2\n  max_failed_verifications: 0",
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "max_failed_verifications" in str(exc.value)
+
+
 class TestToolsSchema:
     def test_real_tools_yaml_is_the_eleven_tool_contract(self, monkeypatch):
         _set_env(monkeypatch)

@@ -746,16 +746,17 @@ if ! git rev-parse -q --verify "$base" >/dev/null 2>&1; then
   base=$(git log --format=%H --grep='^Chat 3 done' -1 2>/dev/null || true)
 fi
 PROTECTED=(bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh)
-# Chat 5 adds rag/query_rewrite.py by design; exclude only that new planned file.
+# Chat 5 adds rag/query_rewrite.py and edits rag/threshold_report.py by design;
+# exclude only those planned files.
 if [ -z "${base:-}" ]; then
   skip "m1. protected paths untouched (no base ref found)"
   skip "m2. manifest drift (no base ref found)"
 else
-  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' 2>/dev/null; then
-    check "m1. protected paths untouched since ${base} (providers/llm and rag/query_rewrite.py excepted)" 1
+  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' 2>/dev/null; then
+    check "m1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 1
   else
-    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' 2>/dev/null | tr '\n' ' ')
-    check "m1. protected paths untouched since ${base} (providers/llm and rag/query_rewrite.py excepted)" 0 "modified: $changed"
+    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' 2>/dev/null | tr '\n' ' ')
+    check "m1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 0 "modified: $changed"
   fi
 
   j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '

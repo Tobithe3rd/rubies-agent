@@ -50,6 +50,11 @@ rag:
     temperature: 0.0
     timeout_seconds: 45
     log_text: false           # true logs original/rewritten text (also debug)
+  # Sweep used by the rewrite comparison report (data/pidgin_threshold_report.md).
+  threshold_report:
+    sweep_start: 0.30
+    sweep_stop: 0.50
+    sweep_step: 0.02
 
 session:
   expiry_minutes: 15

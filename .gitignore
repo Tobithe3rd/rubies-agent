@@ -6,6 +6,8 @@ logs/*.jsonl
 logs/*.log
 data/*.db
 data/chroma/
+data/pidgin_threshold_report.md
+data/pidgin_threshold_report.json
 .pytest_cache/
 .idea/
 .vscode/

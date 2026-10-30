@@ -129,6 +129,21 @@ class QueryRewriteConfig(BaseModel):
         return v
 
 
+class ThresholdReportConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    sweep_start: float = Field(ge=0.0, le=1.0)
+    sweep_stop: float = Field(ge=0.0, le=1.0)
+    sweep_step: float = Field(gt=0.0, le=1.0)
+
+    @field_validator("sweep_stop")
+    @classmethod
+    def stop_ge_start(cls, v: float, info) -> float:
+        start = info.data.get("sweep_start")
+        if start is not None and v < start:
+            raise ValueError("rag.threshold_report.sweep_stop must be >= sweep_start")
+        return v
+
+
 class RAGConfig(BaseModel):
     model_config = {"extra": "forbid"}
     docs_path: str
@@ -142,6 +157,7 @@ class RAGConfig(BaseModel):
     max_query_chars: int = Field(ge=50, le=5000)
     no_result_message: str
     query_rewrite: QueryRewriteConfig
+    threshold_report: ThresholdReportConfig
 
     @field_validator("no_result_message")
     @classmethod

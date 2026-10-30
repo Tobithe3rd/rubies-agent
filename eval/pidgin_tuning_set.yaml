@@ -1,0 +1,79 @@
+# Pidgin retrieval tuning set.
+# TUNING ONLY: this is NOT the held-out evaluation set (that is built in Chat 7).
+# Same schema as eval/rag_dev_set.yaml. Every in-scope Pidgin query is a Pidgin
+# version of one dev-set in-scope question; expected_chunk_id is inherited from
+# that question (recorded in source_dev_question) and never invented.
+in_scope:
+  - question: "Abeg, how much I go pay to send N20,000 go another bank?"
+    expected_chunk_id: RUB-DOC-01#2
+    expected_heading_contains: "transfer fee"
+    source_dev_question: "How much does it cost to transfer ₦20,000 to another bank?"
+  - question: "If I send 50k go another bank, wetin be the charge?"
+    expected_chunk_id: RUB-DOC-01#2
+    expected_heading_contains: "transfer fee"
+    source_dev_question: "How much does it cost to transfer ₦20,000 to another bank?"
+  - question: "How much SMS alert dey cost?"
+    expected_chunk_id: RUB-DOC-01#5
+    expected_heading_contains: "sms"
+    source_dev_question: "How much is an SMS alert?"
+  - question: "Wetin be the daily limit for Tier 1 account?"
+    expected_chunk_id: RUB-DOC-02#3
+    expected_heading_contains: "tier 1"
+    source_dev_question: "What is the daily limit for a Tier 1 account?"
+  - question: "Wetin I need to upgrade my account level?"
+    expected_chunk_id: RUB-DOC-02#7
+    expected_heading_contains: "upgrad"
+    source_dev_question: "What do I need to upgrade my account tier?"
+  - question: "My transfer no go through but dem still chop my money. When I go see am back?"
+    expected_chunk_id: RUB-DOC-03#4
+    expected_heading_contains: "reversal"
+    source_dev_question: "My transfer failed but I was debited. When will I get my money back?"
+  - question: "Dem debit me two times for N25,000, wetin happen next?"
+    expected_chunk_id: RUB-DOC-03#6
+    expected_heading_contains: "double debit"
+    source_dev_question: "I was debited twice for ₦25,000, what happens next?"
+  - question: "Wetin I go talk when I wan report transfer wahala?"
+    expected_chunk_id: RUB-DOC-03#7
+    expected_heading_contains: "information"
+    source_dev_question: "What details do I need to report a transfer problem?"
+  - question: "How I go take report one transaction wey worry me?"
+    expected_chunk_id: RUB-DOC-04#3
+    expected_heading_contains: "disput"
+    source_dev_question: "How do I raise a dispute on a transaction?"
+  - question: "How many days complaint dey take before dem solve am?"
+    expected_chunk_id: RUB-DOC-04#5
+    expected_heading_contains: "timeline"
+    source_dev_question: "How many working days does a complaint take to resolve?"
+  - question: "My card don lost, how I go block am sharp sharp?"
+    expected_chunk_id: RUB-DOC-05#3
+    expected_heading_contains: "lost"
+    source_dev_question: "How do I block my lost card?"
+  - question: "Wetin be the requirements for Rubies loan?"
+    expected_chunk_id: RUB-DOC-06#4
+    expected_heading_contains: "eligib"
+    source_dev_question: "What are the requirements for a Rubies loan?"
+  - question: "How dem dey check if I qualify for loan?"
+    expected_chunk_id: RUB-DOC-06#5
+    expected_heading_contains: "eligib"
+    source_dev_question: "How does the bank check whether I qualify for a loan?"
+  - question: "I don give my details to scammer, wetin I go do?"
+    expected_chunk_id: RUB-DOC-07#5
+    expected_heading_contains: "mistake"
+    source_dev_question: "What should I do if I gave my details to a scammer?"
+
+out_of_scope:
+  - question: "Abeg, wetin be the capital of France?"
+    kind: off_topic
+    expected: no_relevant_result
+  - question: "Wetin be the weather for Lagos today?"
+    kind: off_topic
+    expected: no_relevant_result
+  - question: "How I go take cook jollof rice wey sweet?"
+    kind: off_topic
+    expected: no_relevant_result
+  - question: "I fit buy bitcoin with my Rubies account?"
+    kind: in_domain_unanswerable
+    expected: unanswerable_in_domain
+  - question: "Who be the owner of Rubies?"
+    kind: in_domain_unanswerable
+    expected: unanswerable_in_domain

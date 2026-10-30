@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 6 RAG checks: Titan v2 embedder + mock embedder.
-# Usage: bash scripts/check_rag_step6.sh   (LIVE=0 to skip the live AWS checks)
+# Usage: bash scripts/checks/check_rag_step6.sh   (LIVE=0 to skip the live AWS checks)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -102,7 +102,7 @@ mock_code = (
     "from providers.embeddings.mock import MockEmbedder;"
     "cfg=load_config();"
     "e=MockEmbedder(cfg.settings.embeddings,cfg.env);"
-    "recs=[json.loads(l) for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()];"
+    "recs=[json.loads(l) for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()];"
     "v=e.embed_documents([r['text'] for r in recs]);"
     "assert len(v)==75, len(v);"
     "assert all(len(x)==cfg.settings.embeddings.dimensions for x in v);"
@@ -212,7 +212,7 @@ live_check("Titan same text twice has cosine >= 0.999", lambda: (
 
 # --- 12. LIVE: ranking over 6 chunks ---
 def _ranking():
-    recs = {json.loads(l)["id"]: json.loads(l) for l in read("data/rag_chunks.jsonl").splitlines() if l.strip()}
+    recs = {json.loads(l)["id"]: json.loads(l) for l in read("data/generated/rag_chunks.jsonl").splitlines() if l.strip()}
     ids = ["RUB-DOC-01#2", "RUB-DOC-03#6", "RUB-DOC-04#6", "RUB-DOC-05#3", "RUB-DOC-06#7", "RUB-DOC-07#1"]
     missing = [i for i in ids if i not in recs]
     if missing:

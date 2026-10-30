@@ -124,7 +124,7 @@ class TestRewriteCalls:
         _set_env(monkeypatch)
         rewriter = BoomRewriter()
         rc = tr.rewrite_report(
-            query_set="eval/pidgin_tuning_set.yaml",
+            query_set="eval/datasets/pidgin_tuning_set.yaml",
             rewrite=False,
             output=str(tmp_path / "report.md"),
             embedder=TextEmbedder(),
@@ -139,13 +139,13 @@ class TestRewriteCalls:
         _set_env(monkeypatch)
         cfg = load_config(config_dir="config")
         llm = MockLLM(cfg.settings.llm, cfg.env)
-        calls = len(tr.load_query_set("eval/pidgin_tuning_set.yaml")) + len(
+        calls = len(tr.load_query_set("eval/datasets/pidgin_tuning_set.yaml")) + len(
             tr.load_query_set(tr.DEV_SET_PATH)
         )
         llm.load_complete_responses(["rewritten policy query"] * calls)
         rewriter = LLMQueryRewriter(cfg.settings.rag.query_rewrite, llm)
         rc = tr.rewrite_report(
-            query_set="eval/pidgin_tuning_set.yaml",
+            query_set="eval/datasets/pidgin_tuning_set.yaml",
             rewrite=True,
             output=str(tmp_path / "report.md"),
             embedder=TextEmbedder(),
@@ -161,7 +161,7 @@ class TestReportGeneration:
         _set_env(monkeypatch)
         out = tmp_path / "report.md"
         rc = tr.rewrite_report(
-            query_set="eval/pidgin_tuning_set.yaml",
+            query_set="eval/datasets/pidgin_tuning_set.yaml",
             rewrite=False,
             output=str(out),
             embedder=TextEmbedder(),
@@ -169,7 +169,7 @@ class TestReportGeneration:
         )
         assert rc == 0
         text = out.read_text(encoding="utf-8")
-        questions = tr.load_query_set("eval/pidgin_tuning_set.yaml")
+        questions = tr.load_query_set("eval/datasets/pidgin_tuning_set.yaml")
         for q in questions:
             assert q["question"] in text
         assert "NOT the held-out Chat 7 evaluation set" in text
@@ -181,18 +181,18 @@ class TestReportGeneration:
         out = tmp_path / "report.md"
         for rewrite in (False, True):
             tr.rewrite_report(
-                query_set="eval/pidgin_tuning_set.yaml",
+                query_set="eval/datasets/pidgin_tuning_set.yaml",
                 rewrite=rewrite,
                 output=str(out),
                 embedder=TextEmbedder(),
                 store=FakeStore({}),
                 rewriter=None if not rewrite else CountingRewriter(mapping={
                     q["question"]: "rewritten"
-                    for q in tr.load_query_set("eval/pidgin_tuning_set.yaml")
+                    for q in tr.load_query_set("eval/datasets/pidgin_tuning_set.yaml")
                 }),
             )
         data = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
-        assert data["query_set"] == "eval/pidgin_tuning_set.yaml"
+        assert data["query_set"] == "eval/datasets/pidgin_tuning_set.yaml"
         assert set(data["modes"]) == {"off", "on"}
 
 
@@ -200,17 +200,17 @@ class TestCliAndTuningSet:
     def test_cli_flags_parse(self):
         parser = tr.build_parser()
         args = parser.parse_args([
-            "--config", "conf", "--queries", "eval/pidgin_tuning_set.yaml",
+            "--config", "conf", "--queries", "eval/datasets/pidgin_tuning_set.yaml",
             "--rewrite", "on", "--output", "out.md", "--sweep-step", "0.01",
         ])
         assert args.config == "conf"
-        assert args.queries == "eval/pidgin_tuning_set.yaml"
+        assert args.queries == "eval/datasets/pidgin_tuning_set.yaml"
         assert args.rewrite == "on"
         assert args.output == "out.md"
         assert args.sweep_step == 0.01
 
     def test_tuning_set_shape_and_ids_exist_in_chunks(self):
-        questions = tr.load_query_set("eval/pidgin_tuning_set.yaml")
+        questions = tr.load_query_set("eval/datasets/pidgin_tuning_set.yaml")
         in_scope = [q for q in questions if q["group"] == "in_scope"]
         off = [q for q in questions if q.get("kind") == "off_topic"]
         unans = [q for q in questions if q.get("kind") == "in_domain_unanswerable"]
@@ -220,7 +220,7 @@ class TestCliAndTuningSet:
         assert all(q["expected"] == "no_relevant_result" for q in off)
         assert all(q["expected"] == "unanswerable_in_domain" for q in unans)
         chunk_ids = set()
-        for line in open("data/rag_chunks.jsonl", encoding="utf-8"):
+        for line in open("data/generated/rag_chunks.jsonl", encoding="utf-8"):
             if line.strip():
                 chunk_ids.add(json.loads(line)["id"])
         for q in in_scope:

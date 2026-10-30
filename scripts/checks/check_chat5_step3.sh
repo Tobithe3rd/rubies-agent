@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # Chat 5 step 3 checks: measure how query rewriting changes retrieval on Pidgin.
 # Measurement only: nothing here changes the threshold, top_k, prompts or docs.
-# Usage: LIVE=0 bash scripts/check_chat5_step3.sh   (or LIVE=1)
+# Usage: LIVE=0 bash scripts/checks/check_chat5_step3.sh   (or LIVE=1)
 #
 # LIVE=0: pytest, the Chat 5 step 2 run, protected paths, and the offline tuning
 # set checks run locally; the rewrite off/on report prints SKIP.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 export LIVE
 passes=0
 fails=0
-QUERIES="eval/pidgin_tuning_set.yaml"
-MD="data/pidgin_threshold_report.md"
-REPORT_JSON="data/pidgin_threshold_report.json"
+QUERIES="eval/datasets/pidgin_tuning_set.yaml"
+MD="eval/reports/pidgin_threshold_report.md"
+REPORT_JSON="eval/reports/pidgin_threshold_report.json"
 
 check() {
   local name="$1" ok="$2" detail="${3:-}"
@@ -37,10 +37,10 @@ if [ "$pytest_rc" -eq 0 ] && [ "$count" -gt 250 ]; then a_ok=1; else a_ok=0; fi
 check "a. Full pytest passes with ${count} tests (> 250)" "$a_ok" "pytest rc=${pytest_rc}, count=${count}"
 
 # --------------------------------------------- b. Chat 5 step 2 (all earlier)
-LIVE="$LIVE" bash scripts/check_chat5_step2.sh >/tmp/check_chat5_step2_step3.log 2>&1
+LIVE="$LIVE" bash scripts/checks/check_chat5_step2.sh >/tmp/check_chat5_step2_step3.log 2>&1
 b_rc=$?
 if [ "$b_rc" -eq 0 ]; then b_ok=1; else b_ok=0; fi
-check "b. scripts/check_chat5_step2.sh passes" "$b_ok" "rc=${b_rc}; see /tmp/check_chat5_step2_step3.log"
+check "b. scripts/checks/check_chat5_step2.sh passes" "$b_ok" "rc=${b_rc}; see /tmp/check_chat5_step2_step3.log"
 
 # --------------------------------- c/d. protected agent files vs both bases
 PROT_FILES=(agent/session.py agent/bank_client.py agent/errors.py agent/tool_runtime.py)
@@ -68,7 +68,7 @@ fi
 if [ -z "${base3:-}" ]; then
   skip "e. manifest drift is only date/tier drift (no base ref)"
 else
-  j2=$(git diff -U0 "$base3" -- data/seed_manifest.md 2>/dev/null | python3 -c '
+  j2=$(git diff -U0 "$base3" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
 import sys, re
 from collections import defaultdict
 raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]
@@ -139,13 +139,13 @@ g_out=$(python3 - <<'PY' 2>&1
 import json
 import yaml
 
-data = yaml.safe_load(open("eval/pidgin_tuning_set.yaml", encoding="utf-8"))
+data = yaml.safe_load(open("eval/datasets/pidgin_tuning_set.yaml", encoding="utf-8"))
 in_scope = data.get("in_scope") or []
 out = data.get("out_of_scope") or []
 off = [e for e in out if e.get("kind") == "off_topic"]
 unans = [e for e in out if e.get("kind") == "in_domain_unanswerable"]
 chunks = set()
-for line in open("data/rag_chunks.jsonl", encoding="utf-8"):
+for line in open("data/generated/rag_chunks.jsonl", encoding="utf-8"):
     if line.strip():
         chunks.add(json.loads(line)["id"])
 missing = [e["expected_chunk_id"] for e in in_scope if e["expected_chunk_id"] not in chunks]

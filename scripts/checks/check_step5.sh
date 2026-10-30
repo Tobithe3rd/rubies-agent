@@ -1,6 +1,6 @@
 #!/bin/bash
 B=localhost:8001
-DB=data/bank.db
+DB=data/runtime/bank.db
 q() { sqlite3 -batch -list -noheader "$DB" "$1"; }
 ok=0; bad=0
 check() { if [ "$2" = "$3" ]; then echo "PASS  $1"; ok=$((ok+1)); else echo "FAIL  $1 (expected '$3', got '$2')"; bad=$((bad+1)); fi; }

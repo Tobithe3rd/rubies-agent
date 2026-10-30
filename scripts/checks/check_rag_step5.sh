@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 5 RAG checks: config + heading chunker.
-# Usage: bash scripts/check_rag_step5.sh
+# Usage: bash scripts/checks/check_rag_step5.sh
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -50,7 +50,7 @@ def run_chunker():
 
 
 # --- 0. fresh chunk file ---
-chunks_path = "data/rag_chunks.jsonl"
+chunks_path = "data/generated/rag_chunks.jsonl"
 if os.path.exists(chunks_path):
     os.remove(chunks_path)
 run_chunker()
@@ -89,9 +89,9 @@ shutil.rmtree(tmpdir, ignore_errors=True)
 # --- 3. chunk file exists and every line is JSON ---
 try:
     recs = records()
-    check("data/rag_chunks.jsonl exists and every line is valid JSON", True)
+    check("data/generated/rag_chunks.jsonl exists and every line is valid JSON", True)
 except Exception as exc:
-    check("data/rag_chunks.jsonl exists and every line is valid JSON", False, str(exc))
+    check("data/generated/rag_chunks.jsonl exists and every line is valid JSON", False, str(exc))
     recs = []
 
 # --- 4. chunk count equals the number of "## " lines ---

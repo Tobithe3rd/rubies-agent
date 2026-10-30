@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Chat 4 step 1 checks: config (timezone + agent), clock, session state, tools schema.
-# Usage: bash scripts/check_chat4_step1.sh          (LIVE=1 default, uses AWS)
-#        LIVE=0 bash scripts/check_chat4_step1.sh   (skip anything needing AWS)
+# Usage: bash scripts/checks/check_chat4_step1.sh          (LIVE=1 default, uses AWS)
+#        LIVE=0 bash scripts/checks/check_chat4_step1.sh   (skip anything needing AWS)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 fails=0
@@ -145,7 +145,7 @@ fi
 # ---------------------------------------------------------------- i. earlier scripts
 run_earlier() {
   script="$1"
-  if [ "$script" = "scripts/check_step5.sh" ]; then
+  if [ "$script" = "scripts/checks/check_step5.sh" ]; then
     code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 localhost:8001/health 2>/dev/null || true)
     if [ "$code" != "200" ]; then
       skip "$script (needs the bank API on :8001)"
@@ -154,7 +154,7 @@ run_earlier() {
   fi
   eout=$(LIVE="$LIVE" ALLOW_RAG_CHANGE=1 ALLOW_SEED_CHANGE=1 bash "$script" 2>&1); erc=$?
 
-  if [ "$script" = "scripts/check_rag_all.sh" ]; then
+  if [ "$script" = "scripts/checks/check_rag_all.sh" ]; then
     # Carve-out: check_rag_all.sh's own protected-path gate (R3) is superseded
     # by check j. PASS only if it exits non-zero AND the only FAIL lines are
     # that gate; any other failure is a real failure.
@@ -187,7 +187,7 @@ run_earlier() {
   fi
 }
 
-for s in scripts/check_step*.sh scripts/check_rag_*.sh; do
+for s in scripts/checks/check_step*.sh scripts/checks/check_rag_*.sh; do
   run_earlier "$s"
 done
 
@@ -200,11 +200,11 @@ if [ -z "${base:-}" ]; then
   skip "protected paths untouched (no base ref found)"
   skip "manifest drift (no base ref found)"
 else
-  # j1: protected paths (data/seed_manifest.md is handled separately in j2)
-  if git diff --quiet "$base" -- bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh 2>/dev/null; then
+  # j1: protected paths (data/generated/seed_manifest.md is handled separately in j2)
+  if git diff --quiet "$base" -- bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh 2>/dev/null; then
     pass "protected paths untouched since ${base}"
   else
-    changed=$(git diff --name-only "$base" -- bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh 2>/dev/null | tr '\n' ' ')
+    changed=$(git diff --name-only "$base" -- bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh 2>/dev/null | tr '\n' ' ')
     fail "protected paths untouched since chat3-done" "modified: $changed"
   fi
 
@@ -213,7 +213,7 @@ else
   # (tierN -> TIER). Any other change fails and names the first differing
   # normalised line. A raw line that differs only by a tier label or only by
   # a date is reported as INFO, not as a failure.
-  j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '
+  j2=$(git diff -U0 "$base" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
 import sys, re
 from collections import defaultdict
 raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]

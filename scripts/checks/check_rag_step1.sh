@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 1 RAG checks: facts single source of truth + sources register.
-# Usage: bash scripts/check_rag_step1.sh
+# Usage: bash scripts/checks/check_rag_step1.sh
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os

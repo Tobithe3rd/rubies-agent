@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Chat 4 step 2 checks: agent-side bank client over the real API.
-# Usage: LIVE=0 bash scripts/check_chat4_step2.sh   (or LIVE=1)
+# Usage: LIVE=0 bash scripts/checks/check_chat4_step2.sh   (or LIVE=1)
 #
 # LIVE=0: no check in this script needs AWS. Checks a-j are local HTTP/SQLite
 # checks against the mock bank API. The earlier scripts reached through
 # check_chat4_step1.sh handle their own LIVE gating and print their own SKIPs.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 export LIVE
@@ -382,10 +382,10 @@ if [ "$py_rc" -ne 0 ] && [ "$py_fail" -eq 0 ]; then
 fi
 
 # --- l. re-run the step 1 script (it already re-runs the older scripts) ---
-LIVE="$LIVE" bash scripts/check_chat4_step1.sh >/tmp/check_chat4_step1_step2.log 2>&1
+LIVE="$LIVE" bash scripts/checks/check_chat4_step1.sh >/tmp/check_chat4_step1_step2.log 2>&1
 l_rc=$?
 if [ "$l_rc" -eq 0 ]; then l_ok=1; else l_ok=0; fi
-check "l. scripts/check_chat4_step1.sh passes" "$l_ok" "rc=${l_rc}; see /tmp/check_chat4_step1_step2.log"
+check "l. scripts/checks/check_chat4_step1.sh passes" "$l_ok" "rc=${l_rc}; see /tmp/check_chat4_step1_step2.log"
 
 # --- m. reuse the step 1 script's j1/j2 result ---
 if grep -q "PASS: protected paths untouched" /tmp/check_chat4_step1_step2.log \

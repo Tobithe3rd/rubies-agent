@@ -1,6 +1,6 @@
 """Real-DB checks for the seeded KYC tiers.
 
-These read the REAL seeded SQLite file (data/bank.db) and rag/facts.yaml.
+These read the REAL seeded SQLite file (data/runtime/bank.db) and rag/facts.yaml.
 They skip when the real database has not been seeded.
 """
 import os
@@ -9,7 +9,7 @@ import sqlite3
 import pytest
 import yaml
 
-DB_PATH = "data/bank.db"
+DB_PATH = "data/runtime/bank.db"
 FACTS_PATH = "rag/facts.yaml"
 
 RANK = {"tier1": 1, "tier2": 2, "tier3": 3}

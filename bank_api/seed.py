@@ -453,9 +453,9 @@ def main():
     lines.append(f"Transactions: {len(transactions)}")
     lines.append(f"Cards: {len(cards)}")
     lines.append(f"Loans: {len(loans)}")
-    with open("data/seed_manifest.md", "w") as f:
+    with open("data/generated/seed_manifest.md", "w") as f:
         f.write("\n".join(lines) + "\n")
-    print("Seed complete. Manifest written to data/seed_manifest.md")
+    print("Seed complete. Manifest written to data/generated/seed_manifest.md")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from core.config import ConfigError, load_config
 from core.factories import create_embedder, create_vectorstore
 from providers.vectorstore.chroma import ChromaVectorStore  # noqa: F401  (registers the provider)
 
-CHUNKS_PATH = "data/rag_chunks.jsonl"
+CHUNKS_PATH = "data/generated/rag_chunks.jsonl"
 
 
 def _chunks() -> list[dict]:

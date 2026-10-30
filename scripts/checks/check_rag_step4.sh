@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 4 RAG checks: documents 06, 07, 08 and the whole corpus.
-# Usage: bash scripts/check_rag_step4.sh
+# Usage: bash scripts/checks/check_rag_step4.sh
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -368,11 +368,11 @@ for f in corpus_files:
 check("no 'as above'/'see above' and no PENDING in the corpus", not phrase_problems, "; ".join(phrase_problems))
 
 # --- 17. earlier scripts still pass ---
-s1 = subprocess.run(["bash", "scripts/check_rag_step1.sh"], capture_output=True, text=True).stdout
+s1 = subprocess.run(["bash", "scripts/checks/check_rag_step1.sh"], capture_output=True, text=True).stdout
 check("check_rag_step1 prints 13 passed, 0 failed", "13 passed, 0 failed" in s1, "got: " + s1.strip().splitlines()[-1])
-s2 = subprocess.run(["bash", "scripts/check_rag_step2.sh"], capture_output=True, text=True).stdout
+s2 = subprocess.run(["bash", "scripts/checks/check_rag_step2.sh"], capture_output=True, text=True).stdout
 check("check_rag_step2 prints 14 passed, 0 failed", "14 passed, 0 failed" in s2, "got: " + s2.strip().splitlines()[-1])
-s3 = subprocess.run(["bash", "scripts/check_rag_step3.sh"], capture_output=True, text=True).stdout
+s3 = subprocess.run(["bash", "scripts/checks/check_rag_step3.sh"], capture_output=True, text=True).stdout
 check("check_rag_step3 prints 17 passed, 0 failed", "17 passed, 0 failed" in s3, "got: " + s3.strip().splitlines()[-1])
 
 # --- 18. protected dirs untouched ---

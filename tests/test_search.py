@@ -13,8 +13,8 @@ from providers.embeddings.mock import MockEmbedder
 from providers.vectorstore.chroma import ChromaVectorStore  # noqa: F401  (registers the provider)
 from rag.search import build_search_policy
 
-CHUNKS_PATH = "data/rag_chunks.jsonl"
-DEV_SET_PATH = "eval/rag_dev_set.yaml"
+CHUNKS_PATH = "data/generated/rag_chunks.jsonl"
+DEV_SET_PATH = "eval/datasets/rag_dev_set.yaml"
 
 
 def _chunks() -> dict:

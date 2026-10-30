@@ -26,7 +26,7 @@ OUT_OF_SCOPE = [
     "What is the weather in Lagos today?",
 ]
 
-OUTPUT_PATH = "data/rag_calibration.json"
+OUTPUT_PATH = "eval/reports/rag_calibration.json"
 
 
 def calibrate(config_dir: str = "config") -> int:

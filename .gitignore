@@ -5,9 +5,13 @@ __pycache__/
 logs/*.jsonl
 logs/*.log
 data/*.db
+data/runtime/*.db
 data/chroma/
+data/runtime/chroma/
 data/pidgin_threshold_report.md
 data/pidgin_threshold_report.json
+eval/reports/pidgin_threshold_report.md
+eval/reports/pidgin_threshold_report.json
 .pytest_cache/
 .idea/
 .vscode/

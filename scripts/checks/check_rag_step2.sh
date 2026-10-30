@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 2 RAG checks: the three policy documents.
-# Usage: bash scripts/check_rag_step2.sh
+# Usage: bash scripts/checks/check_rag_step2.sh
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -264,7 +264,7 @@ above_problems = [p for p, text in texts.items() if "as above" in text.lower() o
 check("no section uses 'as above' or 'see above'", not above_problems, ", ".join(above_problems))
 
 # --- 13. step 1 still passes except the kyc tier line ---
-step1 = subprocess.run(["bash", "scripts/check_rag_step1.sh"], capture_output=True, text=True)
+step1 = subprocess.run(["bash", "scripts/checks/check_rag_step1.sh"], capture_output=True, text=True)
 step1_fails = [ln for ln in step1.stdout.splitlines() if ln.startswith("FAIL:")]
 unexpected = [f for f in step1_fails if "kyc tier limits confirmed" not in f]
 check("check_rag_step1 still passes (except kyc tier line)", not unexpected,

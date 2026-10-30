@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Chat 4 step 5 checks: the CLI adapter and the live acceptance scenarios.
-# Usage: LIVE=0 bash scripts/check_chat4_step5.sh   (or LIVE=1)
+# Usage: LIVE=0 bash scripts/checks/check_chat4_step5.sh   (or LIVE=1)
 #
 # LIVE=0: every CLI check (a, b, c) runs locally; the live scenarios (d-i) and
 # the JSONL integrity check (j) print SKIP, as does the real-Bedrock step 4
 # re-run. LIVE=1 runs everything against real Bedrock.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 export LIVE
@@ -277,7 +277,7 @@ ALL_OTPS = set()
 # real fee-schedule title, read from the chunks (never hardcoded)
 RUB_DOC01_TITLE = "Fee Schedule"
 try:
-    for raw in open("data/rag_chunks.jsonl", encoding="utf-8"):
+    for raw in open("data/generated/rag_chunks.jsonl", encoding="utf-8"):
         chunk = json.loads(raw)
         cid = str(chunk.get("id") or chunk.get("chunk_id") or "")
         if cid.startswith("RUB-DOC-01"):
@@ -735,17 +735,17 @@ if [ "$pytest_rc" -eq 0 ] && [ "$count" -gt 224 ]; then k_ok=1; else k_ok=0; fi
 check "k. Full pytest passes with ${count} tests (> 224)" "$k_ok" "pytest rc=${pytest_rc}, count=${count}"
 
 # ================================================ l. re-run step 4 (steps 3-1)
-LIVE="$LIVE" bash scripts/check_chat4_step4.sh >/tmp/check_chat4_step4_step5.log 2>&1
+LIVE="$LIVE" bash scripts/checks/check_chat4_step4.sh >/tmp/check_chat4_step4_step5.log 2>&1
 l_rc=$?
 if [ "$l_rc" -eq 0 ]; then l_ok=1; else l_ok=0; fi
-check "l. scripts/check_chat4_step4.sh passes" "$l_ok" "rc=${l_rc}; see /tmp/check_chat4_step4_step5.log"
+check "l. scripts/checks/check_chat4_step4.sh passes" "$l_ok" "rc=${l_rc}; see /tmp/check_chat4_step4_step5.log"
 
 # ==================================== m. protected paths (step 1 j1/j2 logic)
 base="chat3-done"
 if ! git rev-parse -q --verify "$base" >/dev/null 2>&1; then
   base=$(git log --format=%H --grep='^Chat 3 done' -1 2>/dev/null || true)
 fi
-PROTECTED=(bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh)
+PROTECTED=(bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh)
 # Chat 5 adds rag/query_rewrite.py and edits rag/threshold_report.py by design;
 # exclude only those planned files.
 if [ -z "${base:-}" ]; then
@@ -759,7 +759,7 @@ else
     check "m1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 0 "modified: $changed"
   fi
 
-  j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '
+  j2=$(git diff -U0 "$base" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
 import sys, re
 from collections import defaultdict
 raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]

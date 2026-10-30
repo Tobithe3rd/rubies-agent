@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Full RAG acceptance run: files, safety, end-to-end behaviour, regression.
-# Usage: bash scripts/check_rag_all.sh   (LIVE=0 for the offline path)
+# Usage: bash scripts/checks/check_rag_all.sh   (LIVE=0 for the offline path)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -50,7 +50,7 @@ def settings():
 
 
 def chunks():
-    return [json.loads(l) for l in read("data/rag_chunks.jsonl").splitlines() if l.strip()]
+    return [json.loads(l) for l in read("data/generated/rag_chunks.jsonl").splitlines() if l.strip()]
 
 
 def norm(s):
@@ -60,10 +60,10 @@ def norm(s):
 REQUIRED_FILES = [
     "rag/facts.yaml", "rag/sources.md", "rag/chunker.py", "rag/ingest.py",
     "rag/calibrate.py", "rag/search.py", "rag/threshold_report.py",
-    "rag/analyze_dev_set.py", "rag/README.md", "eval/rag_dev_set.yaml",
+    "rag/analyze_dev_set.py", "rag/README.md", "eval/datasets/rag_dev_set.yaml",
     "providers/embeddings/titan.py", "providers/embeddings/mock.py",
-    "providers/vectorstore/chroma.py", "data/rag_chunks.jsonl",
-    "data/rag_calibration.json", "data/rag_threshold_report.json",
+    "providers/vectorstore/chroma.py", "data/generated/rag_chunks.jsonl",
+    "eval/reports/rag_calibration.json", "eval/reports/rag_threshold_report.json",
 ]
 
 # =====================================================================
@@ -85,7 +85,7 @@ expected_sections = ["Overview", "Documents", "Pipeline", "Configuration", "Runn
 found_sections = [m.group(1).strip() for m in re.finditer(r"^## (.+)$", readme, re.M)]
 commands = ["python -m rag.chunker", "python -m rag.ingest", "python -m rag.calibrate",
             "python -m rag.threshold_report", "python -m rag.analyze_dev_set",
-            "bash scripts/check_rag_all.sh"]
+            "bash scripts/checks/check_rag_all.sh"]
 f3_problems = []
 if found_sections != expected_sections:
     f3_problems.append(f"sections={found_sections}")
@@ -124,7 +124,7 @@ s1_code = (
     f"client=chromadb.PersistentClient(path={real_path!r}, settings=Settings(anonymized_telemetry=False))\n"
     f"coll=client.get_collection({collection!r})\n"
     "docs=coll.get(include=['documents'])['documents']\n"
-    "conn=sqlite3.connect('data/bank.db')\n"
+    "conn=sqlite3.connect('data/runtime/bank.db')\n"
     "names=[r[0] for r in conn.execute('SELECT full_name FROM customers')]\n"
     "phones=[r[0] for r in conn.execute('SELECT phone FROM customers')]\n"
     "last4=[str(r[0]) for r in conn.execute('SELECT DISTINCT last4 FROM cards')]\n"
@@ -162,7 +162,7 @@ tracked = subprocess.run(["git", "ls-files"], capture_output=True, text=True).st
 aws_hits = []
 pattern = re.compile(r"AKIA[A-Z0-9]{16}")
 for path in tracked:
-    if path.startswith((".venv/", "data/chroma/")):
+    if path.startswith((".venv/", "data/runtime/chroma/")):
         continue
     if not os.path.isfile(path):
         continue
@@ -344,7 +344,7 @@ steps = [
     ("check_rag_step8.sh", 23 if LIVE else 19),
 ]
 for script, minimum in steps:
-    out = subprocess.run(["bash", f"scripts/{script}"], capture_output=True, text=True, env=env).stdout
+    out = subprocess.run(["bash", f"scripts/checks/{script}"], capture_output=True, text=True, env=env).stdout
     m = re.search(r"SUMMARY: (\d+) passed, (\d+) failed", out)
     ok = bool(m) and m.group(2) == "0" and int(m.group(1)) >= minimum
     last = out.strip().splitlines()[-1] if out.strip() else "(no output)"

@@ -16,9 +16,9 @@ from core.factories import (
 )
 
 
-DEV_SET_PATH = "eval/rag_dev_set.yaml"
-OUTPUT_PATH = "data/rag_threshold_report.json"
-MARKDOWN_PATH = "data/pidgin_threshold_report.md"
+DEV_SET_PATH = "eval/datasets/rag_dev_set.yaml"
+OUTPUT_PATH = "eval/reports/rag_threshold_report.json"
+MARKDOWN_PATH = "eval/reports/pidgin_threshold_report.md"
 GRID = [round(0.20 + 0.05 * i, 2) for i in range(9)]  # 0.20 .. 0.60
 
 

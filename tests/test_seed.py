@@ -64,7 +64,7 @@ class TestSeed:
         assert len(refs_3) == 1
         failed_ref = refs_3[0]
         # Manifest should contain full reference
-        with open("data/seed_manifest.md") as f:
+        with open("data/generated/seed_manifest.md") as f:
             manifest = f.read()
         assert failed_ref in manifest
 
@@ -114,14 +114,14 @@ class TestSeed:
     def test_lost_card_demo_label(self, temp_cfg):
         dataset = build_dataset(temp_cfg, "2026-10-25")
         import os
-        with open("data/seed_manifest.md") as f:
+        with open("data/generated/seed_manifest.md") as f:
             manifest = f.read()
         assert "Lost card demo" in manifest
 
     def test_eligibility_labels(self, temp_cfg):
         dataset = build_dataset(temp_cfg, "2026-10-25")
         import os
-        with open("data/seed_manifest.md") as f:
+        with open("data/generated/seed_manifest.md") as f:
             manifest = f.read()
         assert "High steady inflow, no loan" in manifest
         assert "Low inflow" in manifest
@@ -133,7 +133,7 @@ class TestSeed:
         refs_3 = [t["reference"] for t in dataset["transactions"] if t.get("account_id") == 3 and t.get("status") == "failed"]
         assert len(refs_3) == 1
         import os
-        with open("data/seed_manifest.md") as f:
+        with open("data/generated/seed_manifest.md") as f:
             manifest = f.read()
         assert refs_3[0] in manifest
         # The manifest should not contain placeholder "..."
@@ -262,7 +262,7 @@ class TestSeed:
         ).fetchone()[0]
         expected = credits / 3 / 100
         conn.close()
-        with open("data/seed_manifest.md") as f:
+        with open("data/generated/seed_manifest.md") as f:
             manifest = f.read()
         # Chidi Adeyemi's row must contain the same naira figure as the DB
         chidi_line = [ln for ln in manifest.splitlines() if ln.startswith("| Chidi Adeyemi")][0]

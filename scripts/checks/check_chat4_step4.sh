@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Chat 4 step 4 checks: LLM provider (bedrock + scripted mock), Strands tool
 # adapters, AgentRunner, baseline prompt, over the real bank API.
-# Usage: LIVE=0 bash scripts/check_chat4_step4.sh   (or LIVE=1)
+# Usage: LIVE=0 bash scripts/checks/check_chat4_step4.sh   (or LIVE=1)
 #
 # LIVE=0: every check is local; l (real Bedrock) prints SKIP. The mock provider
 # drives a to k so no AWS is needed.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 export LIVE
@@ -587,7 +587,7 @@ if [ "$pytest_rc" -eq 0 ] && [ "$count" -gt 199 ]; then m_ok=1; else m_ok=0; fi
 check "m. Full pytest passes with ${count} tests (> 199)" "$m_ok" "pytest rc=${pytest_rc}, count=${count}"
 
 # --- n. re-run the step 3 script (it re-runs step 2, step 1 and older scripts) ---
-LIVE="$LIVE" bash scripts/check_chat4_step3.sh >/tmp/check_chat4_step3_step4.log 2>&1
+LIVE="$LIVE" bash scripts/checks/check_chat4_step3.sh >/tmp/check_chat4_step3_step4.log 2>&1
 n_rc=$?
 if [ "$n_rc" -eq 0 ]; then
   n_ok=1
@@ -604,14 +604,14 @@ else
     n_ok=0
   fi
 fi
-check "n. scripts/check_chat4_step3.sh passes" "$n_ok" "rc=${n_rc}; see /tmp/check_chat4_step3_step4.log"
+check "n. scripts/checks/check_chat4_step3.sh passes" "$n_ok" "rc=${n_rc}; see /tmp/check_chat4_step3_step4.log"
 
 # --- o. protected paths (step 1 j1/j2 logic; providers/llm is the step 4 exception) ---
 base="chat3-done"
 if ! git rev-parse -q --verify "$base" >/dev/null 2>&1; then
   base=$(git log --format=%H --grep='^Chat 3 done' -1 2>/dev/null || true)
 fi
-PROTECTED=(bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh)
+PROTECTED=(bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh)
 if [ -z "${base:-}" ]; then
   skip "o1. protected paths untouched (no base ref found)"
   skip "o2. manifest drift (no base ref found)"
@@ -623,7 +623,7 @@ else
     check "o1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 0 "modified: $changed"
   fi
 
-  j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '
+  j2=$(git diff -U0 "$base" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
 import sys, re
 from collections import defaultdict
 raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]

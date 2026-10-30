@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 3 RAG checks: documents 02 and 05.
-# Usage: bash scripts/check_rag_step3.sh
+# Usage: bash scripts/checks/check_rag_step3.sh
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -318,9 +318,9 @@ for p in ALL_DOCS:
 check("no 'as above'/'see above' and no PENDING in the 5 docs", not phrase_problems, "; ".join(phrase_problems))
 
 # --- 15/16. earlier scripts still pass ---
-s1 = subprocess.run(["bash", "scripts/check_rag_step1.sh"], capture_output=True, text=True).stdout
+s1 = subprocess.run(["bash", "scripts/checks/check_rag_step1.sh"], capture_output=True, text=True).stdout
 check("check_rag_step1 prints 13 passed, 0 failed", "13 passed, 0 failed" in s1, "got: " + s1.strip().splitlines()[-1])
-s2 = subprocess.run(["bash", "scripts/check_rag_step2.sh"], capture_output=True, text=True).stdout
+s2 = subprocess.run(["bash", "scripts/checks/check_rag_step2.sh"], capture_output=True, text=True).stdout
 check("check_rag_step2 prints 14 passed, 0 failed", "14 passed, 0 failed" in s2, "got: " + s2.strip().splitlines()[-1])
 
 # --- 17. protected dirs untouched ---

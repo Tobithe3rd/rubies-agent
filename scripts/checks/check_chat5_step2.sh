@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Chat 5 step 2 checks: query rewriting inside the search_policy path.
-# Usage: LIVE=0 bash scripts/check_chat5_step2.sh   (or LIVE=1)
+# Usage: LIVE=0 bash scripts/checks/check_chat5_step2.sh   (or LIVE=1)
 #
 # LIVE=0: pytest, the Chat 4 acceptance re-run, startup, and the protected-path
 # checks run locally; every real-Bedrock rewriter/retrieval check prints SKIP.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 export LIVE
@@ -34,10 +34,10 @@ if [ "$pytest_rc" -eq 0 ] && [ "$count" -gt 240 ]; then a_ok=1; else a_ok=0; fi
 check "a. Full pytest passes with ${count} tests (> 240)" "$a_ok" "pytest rc=${pytest_rc}, count=${count}"
 
 # ------------------------------------------- b. Chat 4 acceptance (all earlier)
-LIVE="$LIVE" bash scripts/check_chat4_step5.sh >/tmp/check_chat4_step5_step5.log 2>&1
+LIVE="$LIVE" bash scripts/checks/check_chat4_step5.sh >/tmp/check_chat4_step5_step5.log 2>&1
 b_rc=$?
 if [ "$b_rc" -eq 0 ]; then b_ok=1; else b_ok=0; fi
-check "b. scripts/check_chat4_step5.sh passes" "$b_ok" "rc=${b_rc}; see /tmp/check_chat4_step5_step5.log"
+check "b. scripts/checks/check_chat4_step5.sh passes" "$b_ok" "rc=${b_rc}; see /tmp/check_chat4_step5_step5.log"
 
 # --------------------------------------- c. startup names the QueryRewriter impl
 startup_out=$(python3 - <<'PY' 2>&1
@@ -81,7 +81,7 @@ fi
 if [ -z "${base3:-}" ]; then
   skip "f. manifest drift is only date/tier drift (no base ref)"
 else
-  j2=$(git diff -U0 "$base3" -- data/seed_manifest.md 2>/dev/null | python3 -c '
+  j2=$(git diff -U0 "$base3" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
 import sys, re
 from collections import defaultdict
 raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]

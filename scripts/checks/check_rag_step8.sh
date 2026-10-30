@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 8 RAG checks: search_policy, threshold, dev set.
-# Usage: bash scripts/check_rag_step8.sh   (LIVE=0 to skip the live block)
+# Usage: bash scripts/checks/check_rag_step8.sh   (LIVE=0 to skip the live block)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -59,7 +59,7 @@ def settings():
 
 
 def chunks():
-    return {json.loads(l)["id"]: json.loads(l) for l in read("data/rag_chunks.jsonl").splitlines() if l.strip()}
+    return {json.loads(l)["id"]: json.loads(l) for l in read("data/generated/rag_chunks.jsonl").splitlines() if l.strip()}
 
 
 def _replace_line(text, key, value):
@@ -112,7 +112,7 @@ PRE = (
     f"cfg=load_config({mock_cfg!r});"
     "e=create_embedder(cfg);s=create_vectorstore(cfg,e);"
     "search=build_search_policy(cfg,e,s);"
-    "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
+    "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
 )
 
 # --- O1 ---
@@ -199,7 +199,7 @@ for i, (edits, key) in enumerate(invalid):
 check("O7 invalid config values fail naming the right key", not bad, "not named: " + ", ".join(bad))
 
 # --- O8 ---
-dev = yaml.safe_load(read("eval/rag_dev_set.yaml"))
+dev = yaml.safe_load(read("eval/datasets/rag_dev_set.yaml"))
 chunk_map = chunks()
 drift = []
 if len(dev["in_scope"]) != 20 or len(dev["out_of_scope"]) != 6:
@@ -217,7 +217,7 @@ check("O8 dev set: 20 in-scope, 6 out-of-scope, ids and headings valid",
 o9 = []
 for path in ("rag/search.py", "rag/threshold_report.py"):
     text = read(path)
-    for bad_str in ("0.35", "rubies_policy", "data/chroma"):
+    for bad_str in ("0.35", "rubies_policy", "data/runtime/chroma"):
         if bad_str in text:
             o9.append(f"{path}:{bad_str}")
     if "import boto3" in text or "from boto3" in text or "import chromadb" in text or "from chromadb" in text:
@@ -265,7 +265,7 @@ def _live_l1():
         "from rag.search import build_search_policy;"
         "p=json.loads(sys.stdin.read());"
         "cfg=load_config();e=create_embedder(cfg);s=create_vectorstore(cfg,e);search=build_search_policy(cfg,e,s);"
-        "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
+        "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
         "ok=True;"
         "\nfor q,exp in p:\n r=search(q)\n ids=[x['chunk_id'] for x in r.results]\n hit=[x for x in r.results if x['chunk_id']==exp]\n good=r.status=='ok' and exp in ids and hit and hit[0]['citation']==chunks[exp]['citation']\n print('  status=%s top=%s (%.4f) expected=%s citation=%s %s' % (r.status, r.results[0]['chunk_id'] if r.results else '-', r.results[0]['score'] if r.results else 0, exp, hit[0]['citation'] if hit else '-', 'OK' if good else 'MISS'))\n ok = ok and good\n"
         "print('L1_OK' if ok else 'L1_BAD')"
@@ -311,7 +311,7 @@ def _live_l3():
         print("INFO " + line)
     if r.returncode != 0:
         return False, (r.stderr or r.stdout)[:200]
-    report = json.loads(read("data/rag_threshold_report.json"))
+    report = json.loads(read("eval/reports/rag_threshold_report.json"))
     ok = len(report["questions"]) == 26
     return ok, f"questions={len(report['questions'])}"
 
@@ -323,7 +323,7 @@ def _live_l4():
     gate = _need_store()
     if gate:
         return gate
-    report = json.loads(read("data/rag_threshold_report.json"))
+    report = json.loads(read("eval/reports/rag_threshold_report.json"))
     recall = report["recall_at_top_k"]["hits"]
     conf = report["configured"]
     print(f"INFO recall@top_k {recall}/{report['recall_at_top_k']['total']}, "

@@ -1,6 +1,6 @@
 # Pidgin retrieval tuning set.
 # TUNING ONLY: this is NOT the held-out evaluation set (that is built in Chat 7).
-# Same schema as eval/rag_dev_set.yaml. Every in-scope Pidgin query is a Pidgin
+# Same schema as eval/datasets/rag_dev_set.yaml. Every in-scope Pidgin query is a Pidgin
 # version of one dev-set in-scope question; expected_chunk_id is inherited from
 # that question (recorded in source_dev_question) and never invented.
 in_scope:

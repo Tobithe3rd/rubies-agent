@@ -6,7 +6,7 @@ This folder holds the retrieval-augmented generation (RAG) layer for the Rubies 
 
 ## Documents
 
-The corpus is eight policy documents, chunked by heading. Document IDs and titles below are read from `data/rag_chunks.jsonl`.
+The corpus is eight policy documents, chunked by heading. Document IDs and titles below are read from `data/generated/rag_chunks.jsonl`.
 
 | Document ID | Title | File |
 |---|---|---|
@@ -25,7 +25,7 @@ The corpus is eight policy documents, chunked by heading. Document IDs and title
 
 **Documents.** The eight Markdown files in `rag/docs/` are the corpus. Each has a `#` title, a `Document ID:` metadata line, and `## N. Heading` sections.
 
-**Chunking.** `rag/chunker.py` splits each document into one chunk per `## N. Heading` section (subsections stay inside their parent), prepends `<title> > <N>. <heading>` to the body, and writes `data/rag_chunks.jsonl`. A section longer than `chunking.max_words` is split on paragraph boundaries and the parts share one citation.
+**Chunking.** `rag/chunker.py` splits each document into one chunk per `## N. Heading` section (subsections stay inside their parent), prepends `<title> > <N>. <heading>` to the body, and writes `data/generated/rag_chunks.jsonl`. A section longer than `chunking.max_words` is split on paragraph boundaries and the parts share one citation.
 
 **Embeddings.** `providers/embeddings/titan.py` calls Amazon Bedrock Titan v2 (`invoke_model`) one text per call, using the model id, dimensions and normalise flag from config. `providers/embeddings/mock.py` is a deterministic offline stand-in used by tests and offline checks.
 
@@ -44,7 +44,7 @@ Every `rag.*` key is read from `config/settings.yaml` (values shown are the curr
 | `rag.chunking.mode` | heading |
 | `rag.chunking.max_words` | 450 |
 | `rag.ignore_prefixes` | ["_"] |
-| `rag.chunks_path` | data/rag_chunks.jsonl |
+| `rag.chunks_path` | data/generated/rag_chunks.jsonl |
 | `rag.top_k` | 4 |
 | `rag.similarity_threshold` | 0.35 |
 | `rag.max_failed_retrievals` | 2 |
@@ -56,15 +56,15 @@ Swappable parts and the interface each sits behind: the LLM behind `LLMProvider`
 ## Running it
 
 ```bash
-python -m rag.chunker            # chunk the documents into data/rag_chunks.jsonl
+python -m rag.chunker            # chunk the documents into data/generated/rag_chunks.jsonl
 python -m rag.ingest             # embed and (re)build the Chroma collection
 python -m rag.calibrate          # record retrieval scores for the 11 calibration questions
 python -m rag.threshold_report   # score the 26-question dev set across candidate thresholds
 python -m rag.analyze_dev_set    # explain the dev-set misses from the threshold report
-bash scripts/check_rag_all.sh    # run the whole RAG check suite
+bash scripts/checks/check_rag_all.sh    # run the whole RAG check suite
 ```
 
-Add `LIVE=0` for the offline path, for example `LIVE=0 bash scripts/check_rag_all.sh`. `python -m rag.ingest --config <dir>` and the other commands accept an alternative config directory.
+Add `LIVE=0` for the offline path, for example `LIVE=0 bash scripts/checks/check_rag_all.sh`. `python -m rag.ingest --config <dir>` and the other commands accept an alternative config directory.
 
 ## Citations and no-guessing
 
@@ -91,12 +91,12 @@ Every real rule may be out of date; confirm on the official source. From `rag/fa
 
 ## Checks
 
-- `scripts/check_rag_step1.sh` — facts sheet and sources register.
-- `scripts/check_rag_step2.sh` — policy documents 01, 03, 04.
-- `scripts/check_rag_step3.sh` — policy documents 02, 05.
-- `scripts/check_rag_step4.sh` — documents 06, 07, 08 and the corpus.
-- `scripts/check_rag_step5.sh` — config and the heading chunker.
-- `scripts/check_rag_step6.sh` — Titan v2 and mock embedders.
-- `scripts/check_rag_step7.sh` — ChromaDB store, ingest and calibration.
-- `scripts/check_rag_step8.sh` — search_policy, threshold and dev set.
-- `scripts/check_rag_all.sh` — the full acceptance run (files, safety, end-to-end, regression).
+- `scripts/checks/check_rag_step1.sh` — facts sheet and sources register.
+- `scripts/checks/check_rag_step2.sh` — policy documents 01, 03, 04.
+- `scripts/checks/check_rag_step3.sh` — policy documents 02, 05.
+- `scripts/checks/check_rag_step4.sh` — documents 06, 07, 08 and the corpus.
+- `scripts/checks/check_rag_step5.sh` — config and the heading chunker.
+- `scripts/checks/check_rag_step6.sh` — Titan v2 and mock embedders.
+- `scripts/checks/check_rag_step7.sh` — ChromaDB store, ingest and calibration.
+- `scripts/checks/check_rag_step8.sh` — search_policy, threshold and dev set.
+- `scripts/checks/check_rag_all.sh` — the full acceptance run (files, safety, end-to-end, regression).

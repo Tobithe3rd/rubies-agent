@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Step 7 RAG checks: ChromaDB vector store + ingest + calibration.
-# Usage: bash scripts/check_rag_step7.sh   (LIVE=0 to skip the live block)
+# Usage: bash scripts/checks/check_rag_step7.sh   (LIVE=0 to skip the live block)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PY'
 import os
@@ -80,7 +80,7 @@ def ingest(cfg_dir):
 
 
 def chunk_ids():
-    return {json.loads(l)["id"] for l in read("data/rag_chunks.jsonl").splitlines() if l.strip()}
+    return {json.loads(l)["id"] for l in read("data/generated/rag_chunks.jsonl").splitlines() if l.strip()}
 
 
 # =====================================================================
@@ -103,7 +103,7 @@ o2_code = (
     f"client=chromadb.PersistentClient(path={chroma_path!r}, settings=Settings(anonymized_telemetry=False));"
     f"coll=client.get_collection({collection!r});"
     "data=coll.get(include=['documents','metadatas','embeddings']);"
-    "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
+    "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
     "ids=data['ids'];docs=data['documents'];metas=data['metadatas'];embs=data['embeddings'];"
     "assert coll.count()==75, coll.count();"
     "assert set(ids)==set(chunks), 'ids differ';"
@@ -157,7 +157,7 @@ o6_code = (
     "from core.factories import create_embedder, create_vectorstore;"
     f"cfg=load_config({mock_cfg!r});"
     "e=create_embedder(cfg);s=create_vectorstore(cfg,e);"
-    "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
+    "chunks={json.loads(l)['id']:json.loads(l) for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
     "res=s.query(e.embed_query(chunks['RUB-DOC-03#6']['text']), cfg.settings.rag.top_k);"
     "scores=[r['score'] for r in res];"
     "print(res[0]['id'], round(res[0]['score'],4), len(res), scores==sorted(scores,reverse=True))"
@@ -201,11 +201,11 @@ for root, dirs, files in os.walk("."):
         if ("import chromadb" in text or "from chromadb" in text) and not path.startswith("./providers/vectorstore/"):
             chroma_import_bad.append(path)
         # Tests legitimately embed a settings blob, so scope the literal scan to code.
-        if not path.startswith("./tests/") and ("data/chroma" in text or "rubies_policy" in text):
+        if not path.startswith("./tests/") and ("data/runtime/chroma" in text or "rubies_policy" in text):
             forbidden_literal.append(path)
 provider_text = read("providers/vectorstore/chroma.py")
 telemetry_ok = "anonymized_telemetry" in provider_text and "False" in provider_text
-gitignore_ok = "data/chroma" in read(".gitignore")
+gitignore_ok = "data/runtime/chroma" in read(".gitignore")
 check("O9 chromadb only in providers/vectorstore; no hardcoded path/collection; telemetry off; gitignore",
       not chroma_import_bad and not forbidden_literal and telemetry_ok and gitignore_ok,
       f"chromadb:{chroma_import_bad[:2]} literals:{forbidden_literal[:2]} telemetry:{telemetry_ok} gitignore:{gitignore_ok}")
@@ -233,7 +233,7 @@ def _live_reopen():
         f"client=chromadb.PersistentClient(path={real_path!r}, settings=Settings(anonymized_telemetry=False));"
         f"coll=client.get_collection({collection!r});"
         "meta=coll.metadata or {};"
-        "chunks={json.loads(l)['id'] for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
+        "chunks={json.loads(l)['id'] for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()};"
         "ids=set(coll.get()['ids']);"
         "ok=coll.count()==75 and ids==chunks and meta.get('embedder_model')=='amazon.titan-embed-text-v2:0' and meta.get('embedder_dimensions')==1024;"
         "print('OK' if ok else 'BAD '+str(meta)+' count='+str(coll.count()))"
@@ -278,7 +278,7 @@ def _live_calibrate():
     r = subprocess.run([sys.executable, "-m", "rag.calibrate"], capture_output=True, text=True)
     if r.returncode != 0:
         return False, (r.stderr or r.stdout)[:200]
-    data = json.loads(read("data/rag_calibration.json"))
+    data = json.loads(read("eval/reports/rag_calibration.json"))
     in_scope = [d for d in data if d["group"] == "in_scope"]
     out_scope = [d for d in data if d["group"] == "out_of_scope"]
     ok = len(data) == 11 and len(in_scope) == 6 and len(out_scope) == 5 \

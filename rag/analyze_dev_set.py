@@ -6,7 +6,7 @@ import json
 import argparse
 
 
-DEFAULT_REPORT = "data/rag_threshold_report.json"
+DEFAULT_REPORT = "eval/reports/rag_threshold_report.json"
 
 
 def analyze(report_path: str = DEFAULT_REPORT) -> int:

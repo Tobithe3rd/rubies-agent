@@ -11,7 +11,7 @@ import pytest
 from core.config import ConfigError, load_config
 from providers.embeddings.mock import MockEmbedder
 
-CHUNKS_PATH = "data/rag_chunks.jsonl"
+CHUNKS_PATH = "data/generated/rag_chunks.jsonl"
 
 
 def _chunks() -> list[dict]:
@@ -60,7 +60,7 @@ def test_mock_is_deterministic_across_processes():
         "from providers.embeddings.mock import MockEmbedder;"
         "cfg=load_config();"
         "e=MockEmbedder(cfg.settings.embeddings,cfg.env);"
-        "recs=[json.loads(l) for l in open('data/rag_chunks.jsonl',encoding='utf-8') if l.strip()];"
+        "recs=[json.loads(l) for l in open('data/generated/rag_chunks.jsonl',encoding='utf-8') if l.strip()];"
         "v=e.embed_documents([r['text'] for r in recs]);"
         "print(hashlib.sha256(json.dumps(v).encode()).hexdigest())"
     )

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Chat 4 step 3 checks: validated, logged tool runtime over the real bank API.
-# Usage: LIVE=0 bash scripts/check_chat4_step3.sh   (or LIVE=1)
+# Usage: LIVE=0 bash scripts/checks/check_chat4_step3.sh   (or LIVE=1)
 #
 # LIVE=0: every check is local except l (real search_policy), which needs AWS
 # and is printed as SKIP. The older scripts reached through
 # check_chat4_step2.sh handle their own LIVE gating.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
 export LIVE
@@ -499,10 +499,10 @@ if [ "$pytest_rc" -eq 0 ] && [ "$count" -gt 166 ]; then o_ok=1; else o_ok=0; fi
 check "o. Full pytest passes with ${count} tests (> 166)" "$o_ok" "pytest rc=${pytest_rc}, count=${count}"
 
 # --- p. re-run the step 2 script (it re-runs step 1 and the older ones) ---
-LIVE="$LIVE" bash scripts/check_chat4_step2.sh >/tmp/check_chat4_step2_step3.log 2>&1
+LIVE="$LIVE" bash scripts/checks/check_chat4_step2.sh >/tmp/check_chat4_step2_step3.log 2>&1
 p_rc=$?
 if [ "$p_rc" -eq 0 ]; then p_ok=1; else p_ok=0; fi
-check "p. scripts/check_chat4_step2.sh passes" "$p_ok" "rc=${p_rc}; see /tmp/check_chat4_step2_step3.log"
+check "p. scripts/checks/check_chat4_step2.sh passes" "$p_ok" "rc=${p_rc}; see /tmp/check_chat4_step2_step3.log"
 
 # --- q. protected paths (same j1/j2 as step 1, reused) ---
 base="chat3-done"
@@ -513,14 +513,14 @@ if [ -z "${base:-}" ]; then
   skip "q1. protected paths untouched (no base ref found)"
   skip "q2. manifest drift (no base ref found)"
 else
-  if git diff --quiet "$base" -- bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh 2>/dev/null; then
+  if git diff --quiet "$base" -- bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh 2>/dev/null; then
     check "q1. protected paths untouched since ${base}" 1
   else
-    changed=$(git diff --name-only "$base" -- bank_api providers rag eval scripts/check_step5.sh scripts/check_rag_all.sh 2>/dev/null | tr '\n' ' ')
+    changed=$(git diff --name-only "$base" -- bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh 2>/dev/null | tr '\n' ' ')
     check "q1. protected paths untouched since chat3-done" 0 "modified: $changed"
   fi
 
-  j2=$(git diff -U0 "$base" -- data/seed_manifest.md 2>/dev/null | python3 -c '
+  j2=$(git diff -U0 "$base" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
 import sys, re
 from collections import defaultdict
 raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]

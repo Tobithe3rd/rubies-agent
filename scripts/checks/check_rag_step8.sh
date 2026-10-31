@@ -346,13 +346,13 @@ for script, expected in [
     ("check_rag_step4.sh", "25 passed, 0 failed"),
     ("check_rag_step5.sh", "19 passed, 0 failed"),
 ]:
-    out = subprocess.run(["bash", f"scripts/{script}"], capture_output=True, text=True).stdout
+    out = subprocess.run(["bash", f"scripts/checks/{script}"], capture_output=True, text=True).stdout
     last = out.strip().splitlines()[-1] if out.strip() else "(no output)"
     check(f"R1 {script} prints {expected}", expected in out, "got: " + last)
 
 env0 = {**os.environ, "LIVE": "0"}
 for script, minimum in [("check_rag_step6.sh", 14), ("check_rag_step7.sh", 17)]:
-    out = subprocess.run(["bash", f"scripts/{script}"], capture_output=True, text=True, env=env0).stdout
+    out = subprocess.run(["bash", f"scripts/checks/{script}"], capture_output=True, text=True, env=env0).stdout
     m = re.search(r"SUMMARY: (\d+) passed, (\d+) failed", out)
     ok = bool(m) and m.group(2) == "0" and int(m.group(1)) >= minimum
     check(f"R1 {script} (LIVE=0) passes with >= {minimum}", ok,

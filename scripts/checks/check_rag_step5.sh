@@ -215,7 +215,7 @@ for script, expected in [
     ("check_rag_step3.sh", "17 passed, 0 failed"),
     ("check_rag_step4.sh", "25 passed, 0 failed"),
 ]:
-    out = subprocess.run(["bash", f"scripts/{script}"], capture_output=True, text=True).stdout
+    out = subprocess.run(["bash", f"scripts/checks/{script}"], capture_output=True, text=True).stdout
     last = out.strip().splitlines()[-1] if out.strip() else "(no output)"
     check(f"{script} prints {expected}", expected in out, "got: " + last)
 

@@ -269,17 +269,19 @@ class AcceptanceConfig(BaseModel):
 class AgentConfig(BaseModel):
     model_config = {"extra": "forbid"}
     system_prompt_path: str
+    pidgin_examples_path: str
     max_history_messages: int = Field(ge=1)
     tool_timeout_seconds: int = Field(ge=1)
     bank_api_timeout_seconds: int = Field(ge=1)
     max_tool_calls_per_turn: int = Field(ge=1)
     fallback_message: str
 
-    @field_validator("system_prompt_path")
+    @field_validator("system_prompt_path", "pidgin_examples_path")
     @classmethod
-    def path_not_empty(cls, v: str) -> str:
+    def prompt_path_not_empty(cls, v: str, info) -> str:
         if not v or not v.strip():
-            raise ValueError("agent.system_prompt_path must not be empty")
+            key = info.field_name
+            raise ValueError(f"agent.{key} must not be empty")
         return v
 
     @field_validator("fallback_message")

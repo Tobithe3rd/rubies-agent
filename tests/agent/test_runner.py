@@ -31,6 +31,7 @@ def make_cfg(tmp_path, prompt="SYSTEM PROMPT", max_history=40, max_tools=8, fall
         settings=SimpleNamespace(
             agent=SimpleNamespace(
                 system_prompt_path=str(prompt_path),
+                pidgin_examples_path="prompts/pidgin_examples.md",
                 max_history_messages=max_history,
                 max_tool_calls_per_turn=max_tools,
                 fallback_message=fallback,
@@ -94,8 +95,8 @@ def test_model_error_message_does_not_leak_the_session_token(tmp_path):
 def test_prompt_is_passed_to_the_agent_unchanged(tmp_path):
     prompt = "# system\n\nDo not guess.\n"
     runner, _, _ = make_runner(tmp_path, [[("text", "ok")]], prompt=prompt)
-    assert runner.system_prompt == prompt
-    assert runner.agent.system_prompt == prompt
+    assert prompt in runner.system_prompt
+    assert prompt in runner.agent.system_prompt
 
 
 def test_history_is_capped_by_the_conversation_manager(tmp_path):

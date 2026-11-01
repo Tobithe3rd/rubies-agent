@@ -88,6 +88,7 @@ acceptance:
 
 agent:
   system_prompt_path: prompts/system_prompt.md
+  pidgin_examples_path: prompts/pidgin_examples.md
   max_history_messages: 40
   tool_timeout_seconds: 15
   bank_api_timeout_seconds: 10

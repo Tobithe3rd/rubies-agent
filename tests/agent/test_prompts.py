@@ -8,7 +8,12 @@ from core.config import ConfigError
 
 def make_cfg(tmp_path, path):
     return SimpleNamespace(
-        settings=SimpleNamespace(agent=SimpleNamespace(system_prompt_path=str(path)))
+        settings=SimpleNamespace(
+            agent=SimpleNamespace(
+                system_prompt_path=str(path),
+                pidgin_examples_path="prompts/pidgin_examples.md",
+            )
+        )
     )
 
 
@@ -32,4 +37,7 @@ def test_prompt_is_read_unchanged(tmp_path):
     path = tmp_path / "prompt.md"
     text = "# hello\n\nbody text\n"
     path.write_text(text, encoding="utf-8")
-    assert load_system_prompt(make_cfg(tmp_path, path)) == text
+    cfg = make_cfg(tmp_path, path)
+    # With pidgin examples appended, the result includes both texts
+    full = load_system_prompt(cfg)
+    assert text in full

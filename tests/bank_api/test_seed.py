@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 import pytest
 import tempfile
+from pathlib import Path
 from core.config import load_config
 from providers.datastore.sqlite import SQLiteDataStore
 from bank_api.seed import build_dataset, main
@@ -19,10 +20,18 @@ def temp_cfg(monkeypatch, tmp_path):
     return cfg
 
 
-def run_seed_main(temp_cfg):
-    """Run seed.main() against the temp DB, then return a sqlite connection."""
+def manifest_path(temp_cfg):
+    return Path(temp_cfg.settings.bank_api.db_path).parent / "seed_manifest.md"
+
+
+def read_manifest(temp_cfg):
+    return manifest_path(temp_cfg).read_text()
+
+
+def run_seed_main(temp_cfg, today=None):
+    """Run seed.main() against the temp DB and a temp manifest; return a sqlite connection."""
     from bank_api.seed import main as seed_main
-    seed_main()
+    seed_main(today=today, manifest_path=str(manifest_path(temp_cfg)))
     conn = sqlite3.connect(temp_cfg.settings.bank_api.db_path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -64,8 +73,8 @@ class TestSeed:
         assert len(refs_3) == 1
         failed_ref = refs_3[0]
         # Manifest should contain full reference
-        with open("data/generated/seed_manifest.md") as f:
-            manifest = f.read()
+        run_seed_main(temp_cfg, today="2026-10-25")
+        manifest = read_manifest(temp_cfg)
         assert failed_ref in manifest
 
     def test_double_debit_scenario(self, temp_cfg):
@@ -92,6 +101,15 @@ class TestSeed:
         active_loan = [l for l in loans if l.get("status") == "active"]
         assert len(active_loan) >= 1
 
+    def test_three_salary_credits_whatever_the_day(self, temp_cfg):
+        # regression: on the 1st to 4th of a month this month's payday has not happened yet
+        for today in ("2026-11-01", "2026-11-04", "2026-11-05", "2026-12-01", "2027-01-02"):
+            ds = build_dataset(temp_cfg, today)
+            salary = [t for t in ds["transactions"]
+                      if t.get("account_id") == 18 and t.get("direction") == "credit"
+                      and t.get("amount_kobo") == 45000000]
+            assert len(salary) == 3, (today, len(salary))
+
     def test_pending_transfer_scenario(self, temp_cfg):
         dataset = build_dataset(temp_cfg, "2026-10-25")
         pending = [t for t in dataset["transactions"] if t.get("status") == "pending"]
@@ -114,15 +132,15 @@ class TestSeed:
     def test_lost_card_demo_label(self, temp_cfg):
         dataset = build_dataset(temp_cfg, "2026-10-25")
         import os
-        with open("data/generated/seed_manifest.md") as f:
-            manifest = f.read()
+        run_seed_main(temp_cfg, today="2026-10-25")
+        manifest = read_manifest(temp_cfg)
         assert "Lost card demo" in manifest
 
     def test_eligibility_labels(self, temp_cfg):
         dataset = build_dataset(temp_cfg, "2026-10-25")
         import os
-        with open("data/generated/seed_manifest.md") as f:
-            manifest = f.read()
+        run_seed_main(temp_cfg, today="2026-10-25")
+        manifest = read_manifest(temp_cfg)
         assert "High steady inflow, no loan" in manifest
         assert "Low inflow" in manifest
         assert "Very new account (15 days)" in manifest
@@ -133,8 +151,8 @@ class TestSeed:
         refs_3 = [t["reference"] for t in dataset["transactions"] if t.get("account_id") == 3 and t.get("status") == "failed"]
         assert len(refs_3) == 1
         import os
-        with open("data/generated/seed_manifest.md") as f:
-            manifest = f.read()
+        run_seed_main(temp_cfg, today="2026-10-25")
+        manifest = read_manifest(temp_cfg)
         assert refs_3[0] in manifest
         # The manifest should not contain placeholder "..."
         assert "..." not in manifest.split("Failed transfer")[1].split("|")[0]
@@ -262,8 +280,7 @@ class TestSeed:
         ).fetchone()[0]
         expected = credits / 3 / 100
         conn.close()
-        with open("data/generated/seed_manifest.md") as f:
-            manifest = f.read()
+        manifest = read_manifest(temp_cfg)
         # Chidi Adeyemi's row must contain the same naira figure as the DB
         chidi_line = [ln for ln in manifest.splitlines() if ln.startswith("| Chidi Adeyemi")][0]
         assert f"₦{expected:,.0f}/mo" in chidi_line

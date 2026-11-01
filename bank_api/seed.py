@@ -199,10 +199,16 @@ def build_dataset(cfg, today: Optional[str] = None) -> dict:
         if has_salary:
             salary_kobo = naira_to_kobo(450000) if cid == 18 else naira_to_kobo(random.choice(SALARY_AMOUNTS_NAIRA))
             y, m = today_dt.year, today_dt.month
+            if datetime.datetime(y, m, 5) > today_dt:
+                # this month's payday has not happened yet: start from last month
+                m -= 1
+                if m == 0:
+                    m = 12
+                    y -= 1
             salary_dates = []
             for _ in range(3):
                 d = datetime.datetime(y, m, 5)
-                if d <= today_dt and d >= opened_dt:
+                if d >= opened_dt:
                     salary_dates.append(d)
                 m -= 1
                 if m == 0:
@@ -360,12 +366,12 @@ def build_dataset(cfg, today: Optional[str] = None) -> dict:
     return dataset
 
 
-def main():
+def main(today: Optional[str] = None, manifest_path: Optional[str] = None):
     cfg = load_config()
     store = SQLiteDataStore(cfg.settings.bank_api, cfg.env)
     store.init_schema()
     store.reset_data()
-    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    today_str = today or datetime.datetime.now().strftime("%Y-%m-%d")
     dataset = build_dataset(cfg, today=today_str)
     store.insert_seed_data(dataset)
 
@@ -453,9 +459,10 @@ def main():
     lines.append(f"Transactions: {len(transactions)}")
     lines.append(f"Cards: {len(cards)}")
     lines.append(f"Loans: {len(loans)}")
-    with open("data/generated/seed_manifest.md", "w") as f:
+    out_path = manifest_path or "data/generated/seed_manifest.md"
+    with open(out_path, "w") as f:
         f.write("\n".join(lines) + "\n")
-    print("Seed complete. Manifest written to data/generated/seed_manifest.md")
+    print(f"Seed complete. Manifest written to {out_path}")
 
 
 if __name__ == "__main__":

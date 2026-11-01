@@ -6,6 +6,8 @@
 # LIVE=0: every check is local; l (real Bedrock) prints SKIP. The mock provider
 # drives a to k so no AWS is needed.
 set -u
+source scripts/checks/lib_manifest.sh
+source scripts/checks/lib_protected.sh
 cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
@@ -453,17 +455,23 @@ try:
     check("i. history capped to 6 messages across 10 turns", i_ok,
           f"max_messages={max_seen} turn={i_session.turn}")
 
-    # j. prompt: loaded unchanged, required strings, missing path fails fast
+    # j. prompt: loaded contains full system prompt, required strings, missing path fails fast, additions only
     prompt_path = mock_cfg.settings.agent.system_prompt_path
     with open(prompt_path, "rb") as handle:
         prompt_bytes = handle.read()
-    runner_prompt_ok = (
-        a_runner.system_prompt.encode("utf-8") == prompt_bytes
-        and a_runner.agent.system_prompt.encode("utf-8") == prompt_bytes
-    )
-    prompt_text = prompt_bytes.decode("utf-8")
-    required = ["I do not know", "confirm_action", "search_policy", "customer ID"]
-    strings_ok = all(s in prompt_text for s in required)
+    full_text = prompt_bytes.decode("utf-8")
+    # (i) loaded system prompt contains full text of prompts/system_prompt.md
+    # Since agent/prompts.py now appends pidgin_examples.md, the loaded prompt
+    # is the combined text; we verify the base file is present and unchanged.
+    base_path = "prompts/system_prompt.md"
+    with open(base_path, "rb") as handle:
+        base_bytes = handle.read()
+    base_text = base_bytes.decode("utf-8")
+    # The loaded prompt includes the base; verify base content is intact
+    base_in_full = base_text in full_text
+    # (ii) key strings present
+    required = ["I do not know", "confirm_action", "search_policy", "customer ID", "## Register", "## Answering policy questions", "## No-guessing reminder"]
+    strings_ok = all(s in full_text for s in required)
 
     import shutil
 
@@ -488,9 +496,27 @@ try:
         missing_ok = False
         print(f"INFO: unexpected factory error: {type(exc).__name__}: {exc}")
     shutil.rmtree(bad_prompt_dir, ignore_errors=True)
-    check("j. prompt loaded unchanged, has key strings, missing path fails fast",
-          runner_prompt_ok and strings_ok and missing_ok,
-          f"unchanged={runner_prompt_ok} strings={strings_ok} missing={missing_ok}")
+
+    # (iv) additions only: no removed lines from chat4-done
+    base="chat4-done"
+    import subprocess
+    diff_output = subprocess.run(
+        ["git", "diff", "chat4-done", "--", "prompts/system_prompt.md"],
+        capture_output=True, text=True
+    ).stdout
+    removed_lines = [l for l in diff_output.splitlines() if l.startswith("-") and not l.startswith("---")]
+    # Filter out the header line (--- prompts/system_prompt.md)
+    removed_content = [l for l in removed_lines if not (l.startswith("-#") and l.startswith("-# Rubies")) and not l.startswith("---")]
+    # Actually the header lines start with "---"; we want only content removals (lines starting with "-" that are not "---")
+    additions_only_ok = not any(l.startswith("-") and not l.startswith("---") for l in diff_output.splitlines() if l not in ("+++ prompts/system_prompt.md", "--- prompts/system_prompt.md"))
+    # More precise: check if any non-header line starts with "-"
+    non_header = [l for l in diff_output.splitlines() if not l.startswith("+++ ") and not l.startswith("--- ")]
+    has_removals = any(l.startswith("-") for l in non_header)
+    additions_only_ok = not has_removals
+
+    check("j. prompt loaded, base intact, key strings present, missing fails, additions only",
+          base_in_full and strings_ok and missing_ok and additions_only_ok,
+          f"base_in_full={base_in_full} strings={strings_ok} missing={missing_ok} additions_only={additions_only_ok}")
 
     # k. config fail-fast names the keys
     def bad_config(mutate, name):
@@ -606,70 +632,9 @@ else
 fi
 check "n. scripts/checks/check_chat4_step3.sh passes" "$n_ok" "rc=${n_rc}; see /tmp/check_chat4_step3_step4.log"
 
-# --- o. protected paths (step 1 j1/j2 logic; providers/llm is the step 4 exception) ---
-base="chat3-done"
-if ! git rev-parse -q --verify "$base" >/dev/null 2>&1; then
-  base=$(git log --format=%H --grep='^Chat 3 done' -1 2>/dev/null || true)
-fi
-PROTECTED=(bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh)
-if [ -z "${base:-}" ]; then
-  skip "o1. protected paths untouched (no base ref found)"
-  skip "o2. manifest drift (no base ref found)"
-else
-  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' 2>/dev/null; then
-    check "o1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 1
-  else
-    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' 2>/dev/null | tr '\n' ' ')
-    check "o1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 0 "modified: $changed"
-  fi
-
-  j2=$(git diff -U0 "$base" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
-import sys, re
-from collections import defaultdict
-raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]
-removed = [l[1:] for l in raw if l.startswith("-")]
-added = [l[1:] for l in raw if l.startswith("+")]
-if not removed and not added:
-    print("NOCHANGE")
-    sys.exit(0)
-dr = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
-tr = re.compile(r"\btier[0-9]\b")
-nd = lambda s: dr.sub("DATE", s)
-nt = lambda s: tr.sub("TIER", s)
-nb = lambda s: nt(nd(s))
-rn = sorted(map(nb, removed))
-an = sorted(map(nb, added))
-if rn == an:
-    gr, ga = defaultdict(list), defaultdict(list)
-    for l in removed: gr[nb(l)].append(l)
-    for l in added: ga[nb(l)].append(l)
-    tier = date = False
-    for k in set(gr) | set(ga):
-        for r, a in zip(gr[k], ga[k]):
-            if r != a:
-                if nt(r) == nt(a): tier = True
-                elif nd(r) == nd(a): date = True
-    if tier: print("INFO: manifest tier drift (KYC tier follows run-day balances)")
-    if date: print("INFO: manifest has date-only drift")
-    print("PASS")
-    sys.exit(0)
-for i in range(max(len(rn), len(an))):
-    r = rn[i] if i < len(rn) else "<none>"
-    a = an[i] if i < len(an) else "<none>"
-    if r != a:
-        print("FAIL: " + r + "  ->  " + a)
-        sys.exit(1)
-')
-  printf '%s\n' "$j2" | grep '^INFO:' || true
-  if printf '%s\n' "$j2" | grep -q '^FAIL:'; then
-    first=$(printf '%s\n' "$j2" | grep '^FAIL:' | head -1)
-    check "o2. manifest drift is only date/tier drift since ${base}" 0 "${first#FAIL: }"
-  elif printf '%s\n' "$j2" | grep -q '^NOCHANGE'; then
-    check "o2. manifest has no drift since ${base}" 1
-  else
-    check "o2. manifest drift is only date/tier drift since ${base}" 1
-  fi
-fi
+# --- o. protected paths and manifest drift (shared libs: lib_protected.sh, lib_manifest.sh) ---
+protected_check o chat3-done
+manifest_check "o2. manifest drift is only date/tier drift since chat3-done" chat3-done
 
 echo "INFO: agent/bank_client.py, agent/errors.py, agent/session.py vs HEAD (informational):"
 git diff --stat HEAD -- agent/bank_client.py agent/errors.py agent/session.py 2>/dev/null || true

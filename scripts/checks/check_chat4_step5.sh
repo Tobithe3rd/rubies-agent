@@ -6,6 +6,8 @@
 # the JSONL integrity check (j) print SKIP, as does the real-Bedrock step 4
 # re-run. LIVE=1 runs everything against real Bedrock.
 set -u
+source scripts/checks/lib_manifest.sh
+source scripts/checks/lib_protected.sh
 cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
@@ -740,72 +742,9 @@ l_rc=$?
 if [ "$l_rc" -eq 0 ]; then l_ok=1; else l_ok=0; fi
 check "l. scripts/checks/check_chat4_step4.sh passes" "$l_ok" "rc=${l_rc}; see /tmp/check_chat4_step4_step5.log"
 
-# ==================================== m. protected paths (step 1 j1/j2 logic)
-base="chat3-done"
-if ! git rev-parse -q --verify "$base" >/dev/null 2>&1; then
-  base=$(git log --format=%H --grep='^Chat 3 done' -1 2>/dev/null || true)
-fi
-PROTECTED=(bank_api providers rag eval scripts/checks/check_step5.sh scripts/checks/check_rag_all.sh)
-# Chat 5 adds rag/query_rewrite.py and edits rag/threshold_report.py by design;
-# exclude only those planned files.
-if [ -z "${base:-}" ]; then
-  skip "m1. protected paths untouched (no base ref found)"
-  skip "m2. manifest drift (no base ref found)"
-else
-  if git diff --quiet "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' 2>/dev/null; then
-    check "m1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 1
-  else
-    changed=$(git diff --name-only "$base" -- "${PROTECTED[@]}" ':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' 2>/dev/null | tr '\n' ' ')
-    check "m1. protected paths untouched since ${base} (providers/llm, rag/query_rewrite.py, rag/threshold_report.py excepted)" 0 "modified: $changed"
-  fi
-
-  j2=$(git diff -U0 "$base" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
-import sys, re
-from collections import defaultdict
-raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]
-removed = [l[1:] for l in raw if l.startswith("-")]
-added = [l[1:] for l in raw if l.startswith("+")]
-if not removed and not added:
-    print("NOCHANGE")
-    sys.exit(0)
-dr = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
-tr = re.compile(r"\btier[0-9]\b")
-nd = lambda s: dr.sub("DATE", s)
-nt = lambda s: tr.sub("TIER", s)
-nb = lambda s: nt(nd(s))
-rn = sorted(map(nb, removed))
-an = sorted(map(nb, added))
-if rn == an:
-    gr, ga = defaultdict(list), defaultdict(list)
-    for l in removed: gr[nb(l)].append(l)
-    for l in added: ga[nb(l)].append(l)
-    tier = date = False
-    for k in set(gr) | set(ga):
-        for r, a in zip(gr[k], ga[k]):
-            if r != a:
-                if nt(r) == nt(a): tier = True
-                elif nd(r) == nd(a): date = True
-    if tier: print("INFO: manifest tier drift (KYC tier follows run-day balances)")
-    if date: print("INFO: manifest has date-only drift")
-    print("PASS")
-    sys.exit(0)
-for i in range(max(len(rn), len(an))):
-    r = rn[i] if i < len(rn) else "<none>"
-    a = an[i] if i < len(an) else "<none>"
-    if r != a:
-        print("FAIL: " + r + "  ->  " + a)
-        sys.exit(1)
-')
-  printf '%s\n' "$j2" | grep '^INFO:' || true
-  if printf '%s\n' "$j2" | grep -q '^FAIL:'; then
-    first=$(printf '%s\n' "$j2" | grep '^FAIL:' | head -1)
-    check "m2. manifest drift is only date/tier drift since ${base}" 0 "${first#FAIL: }"
-  elif printf '%s\n' "$j2" | grep -q '^NOCHANGE'; then
-    check "m2. manifest has no drift since ${base}" 1
-  else
-    check "m2. manifest drift is only date/tier drift since ${base}" 1
-  fi
-fi
+# ==================================== m. protected paths and manifest drift (shared libs)
+protected_check m chat3-done
+manifest_check "m2. manifest drift is only date/tier drift since chat3-done" chat3-done
 
 # ======================================================== n. informational diff
 echo "INFO: security-critical files vs HEAD (informational):"

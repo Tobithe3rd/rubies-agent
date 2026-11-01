@@ -6,6 +6,8 @@
 # LIVE=0: pytest, the Chat 5 step 2 run, protected paths, and the offline tuning
 # set checks run locally; the rewrite off/on report prints SKIP.
 set -u
+source scripts/checks/lib_manifest.sh
+source scripts/checks/lib_protected.sh
 cd "$(dirname "$0")/../.."
 
 LIVE="${LIVE:-1}"
@@ -64,54 +66,8 @@ else
     "modified: $(git diff --name-only --diff-filter=MD "$base3" -- "${PROT_FILES[@]}" 2>/dev/null | tr '\n' ' ')"
 fi
 
-# ------------------------------------------------ e. manifest drift (date/tier)
-if [ -z "${base3:-}" ]; then
-  skip "e. manifest drift is only date/tier drift (no base ref)"
-else
-  j2=$(git diff -U0 "$base3" -- data/generated/seed_manifest.md 2>/dev/null | python3 -c '
-import sys, re
-from collections import defaultdict
-raw = [l for l in sys.stdin.read().splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]
-removed = [l[1:] for l in raw if l.startswith("-")]
-added = [l[1:] for l in raw if l.startswith("+")]
-if not removed and not added:
-    print("NOCHANGE")
-    sys.exit(0)
-dr = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
-tr = re.compile(r"\btier[0-9]\b")
-nd = lambda s: dr.sub("DATE", s)
-nt = lambda s: tr.sub("TIER", s)
-nb = lambda s: nt(nd(s))
-rn = sorted(map(nb, removed))
-an = sorted(map(nb, added))
-if rn == an:
-    gr, ga = defaultdict(list), defaultdict(list)
-    for l in removed: gr[nb(l)].append(l)
-    for l in added: ga[nb(l)].append(l)
-    tier = date = False
-    for k in set(gr) | set(ga):
-        for r, a in zip(gr[k], ga[k]):
-            if r != a:
-                if nt(r) == nt(a): tier = True
-                elif nd(r) == nd(a): date = True
-    if tier: print("INFO: manifest tier drift (KYC tier follows run-day balances)")
-    if date: print("INFO: manifest has date-only drift")
-    print("PASS")
-    sys.exit(0)
-for i in range(max(len(rn), len(an))):
-    r = rn[i] if i < len(rn) else "<none>"
-    a = an[i] if i < len(an) else "<none>"
-    if r != a:
-        print("FAIL: " + r + "  ->  " + a)
-        sys.exit(1)
-')
-  printf '%s\n' "$j2" | grep '^INFO:' || true
-  if printf '%s\n' "$j2" | grep -q '^FAIL:'; then
-    check "e. manifest drift is only date/tier drift" 0 "$(printf '%s\n' "$j2" | grep '^FAIL:' | head -1)"
-  else
-    check "e. manifest drift is only date/tier drift" 1
-  fi
-fi
+# ------------------------------------------------ e. manifest drift (shared lib)
+manifest_check "e. manifest drift is only date/tier drift" chat3-done
 
 # ------------------------------------- f. threshold and top_k unchanged
 f_out=$(python3 - <<'PY' 2>&1

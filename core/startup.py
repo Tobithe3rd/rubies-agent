@@ -227,6 +227,14 @@ def run_startup(config_dir: str = "config") -> StartupResult:
     logger.info(f"debug: {cfg.settings.logging.debug}")
     logger.info(f"timezone: {cfg.settings.timezone}")
     logger.info(f"bank gateway: {cfg.settings.bank_api.gateway}")
+    logger.info(f"adapter: {cfg.settings.adapter.type}")
+    try:
+        adapter_impl = cfg.settings.adapter.type
+        if adapter_impl == "cli":
+            adapter_impl = "cli_chat"
+        logger.info(f"adapter module: adapters.{adapter_impl}")
+    except Exception:
+        pass
     logger.info(f"rag chunking mode: {cfg.settings.rag.chunking.mode}")
 
     if cfg.settings.logging.debug:

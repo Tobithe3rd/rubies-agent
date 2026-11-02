@@ -31,6 +31,7 @@ _IMPORT_MAP: dict[tuple[str, str], str] = {
     ("datastore", "sqlite"): "providers.datastore.sqlite",
     ("adapter", "cli"): "adapters.cli_chat",
     ("adapter", "http_chat"): "adapters.http_chat",
+    ("adapter", "web"): "adapters.web_chat",
     ("otp_sender", "mock"): "providers.otp.mock",
     ("bank_gateway", "http"): "agent.bank_client",
     ("query_rewriter", "llm"): "rag.query_rewrite",

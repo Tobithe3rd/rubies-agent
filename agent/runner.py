@@ -46,18 +46,36 @@ class AgentRunner:
             name="rubies-support-agent",
         )
 
-    def handle_message(self, text: str) -> str:
+    def _setup_turn(self, text: str) -> bool:
+        # Pre-turn setup: once per non-empty message. Returns False for empty.
         if text is None or not str(text).strip():
-            return EMPTY_MESSAGE_REPLY
-
+            return False
         self.session.start_turn()
         self.counter.reset()
+        return True
+
+    def handle_message(self, text: str) -> str:
+        if not self._setup_turn(text):
+            return EMPTY_MESSAGE_REPLY
         try:
             result = self.agent(text)
         except Exception as exc:
             self._log_agent_error(exc)
             return self.config.settings.agent.fallback_message
         return self._final_text(result)
+
+    async def stream_events(self, text):
+        if not self._setup_turn(text):
+            # Empty message: yield nothing (same behavior as handle_message returning empty reply)
+            return
+        try:
+            async for event in self.agent.stream_async(text):
+                yield event
+        except Exception as exc:
+            self._log_agent_error(exc)
+            # On model/SDK error, yield a single event with fallback text so the CLI
+            # can display it the same way it handles other events.
+            yield {"data": self.config.settings.agent.fallback_message}
 
     def _final_text(self, result: Any) -> str:
         message = getattr(result, "message", None) or {}

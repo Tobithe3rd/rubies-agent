@@ -82,6 +82,18 @@ adapters:
     allow_otp_command: true
     prompt_text: "You: "
     agent_label: "Rubies: "
+  web:
+    host: 127.0.0.1
+    port: 8002
+    cors_origins:
+      - "http://localhost:3000"
+    session_idle_seconds: 1800
+    session_max_age_seconds: 14400
+    max_sessions: 50
+    max_message_chars: 2000
+    allow_dev_otp: false
+    otp_log_path: logs/otp.log
+    error_message: "Sorry, something went wrong. Please try again."
 
 acceptance:
   max_attempts_per_scenario: 2

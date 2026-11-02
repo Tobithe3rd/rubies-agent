@@ -99,6 +99,47 @@ def test_prompt_is_passed_to_the_agent_unchanged(tmp_path):
     assert prompt in runner.agent.system_prompt
 
 
+def test_stream_path_increments_turn_and_allows_confirm_on_next_message(tmp_path):
+    import asyncio
+    scripts = [[("text", "done")], [("text", "ok")]]
+    runner, runtime, model = make_runner(tmp_path, scripts)
+    async def consume_first():
+        evs = []
+        async for event in runner.stream_events("msg 1"):
+            evs.append(event)
+        return evs
+    asyncio.run(consume_first())
+    assert runtime.session.turn == 1, f"Expected turn=1 after stream, got {runtime.session.turn}"
+    assert model.call_count == 1
+    # Empty message must not increment turn
+    async def consume_empty():
+        evs = []
+        async for event in runner.stream_events("   "):
+            evs.append(event)
+        return evs
+    asyncio.run(consume_empty())
+    assert runtime.session.turn == 1, f"Empty message should not increment turn, got {runtime.session.turn}"
+
+
+def test_stream_path_confirm_sequence_works(tmp_path):
+    import asyncio
+    scripts = [[("text", "pending")], [("text", "confirmed")]]
+    runner, runtime, model = make_runner(tmp_path, scripts)
+    runtime.session.set_verified("TOK", "Name")
+    runtime.session.register_pending("PT_A", "open_dispute")
+    # Broken stream would leave turn at 0; fixed stream increments to 1.
+    async def consume_first():
+        evs = []
+        async for event in runner.stream_events("confirm please"):
+            evs.append(event)
+        return evs
+    asyncio.run(consume_first())
+    assert runtime.session.turn == 1
+    allowed, reason = runtime.session.can_confirm("PT_A")
+    assert allowed is True, f"Confirm allowed={allowed} reason={reason}"
+    assert reason == "ok"
+
+
 def test_history_is_capped_by_the_conversation_manager(tmp_path):
     scripts = [[("text", f"reply {i}")] for i in range(10)]
     runner, _, _ = make_runner(tmp_path, scripts, max_history=6)

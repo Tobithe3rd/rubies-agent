@@ -256,9 +256,38 @@ class CliAdapterConfig(BaseModel):
         return v
 
 
+class WebAdapterConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    host: str = "127.0.0.1"
+    port: int = Field(ge=1, le=65535)
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    session_idle_seconds: int = Field(ge=60)
+    session_max_age_seconds: int = Field(ge=60)
+    max_sessions: int = Field(ge=1)
+    max_message_chars: int = Field(ge=1)
+    allow_dev_otp: bool = Field(strict=True, default=False)
+    otp_log_path: str
+    error_message: str
+
+    @field_validator("otp_log_path")
+    @classmethod
+    def otp_path_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("adapters.web.otp_log_path must not be empty")
+        return v
+
+    @field_validator("error_message")
+    @classmethod
+    def error_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("adapters.web.error_message must not be empty")
+        return v
+
+
 class AdaptersConfig(BaseModel):
     model_config = {"extra": "forbid"}
     cli: CliAdapterConfig
+    web: WebAdapterConfig
 
 
 class AcceptanceConfig(BaseModel):

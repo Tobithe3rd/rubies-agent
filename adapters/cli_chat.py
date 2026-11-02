@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 from typing import Callable, Optional, TextIO
@@ -103,8 +104,10 @@ class CliAdapter(InterfaceAdapter):
                 if not self._handle_command(command):
                     break
                 continue
-            reply = self.runner.handle_message(text)
-            self._write(f"{self.agent_label}{self._scrub(reply)}\n")
+            self._write(self.agent_label)
+            self._stream_message(text)
+            self.output.write("\n")
+            self.output.flush()
         self._running = False
         try:
             self.output.flush()
@@ -154,6 +157,40 @@ class CliAdapter(InterfaceAdapter):
         if token and isinstance(token, str):
             text = text.replace(token, "***")
         return text
+
+    def _stream_message(self, text: str) -> None:
+        try:
+            agent = getattr(self.runner, "agent", None)
+            if agent is None:
+                self.output.write(str(self.runner.handle_message(text)))
+                return
+            async def _consume():
+                tool_seen: set = set()
+                # Fixed: use runner.stream_events so start_turn/counter reset fire.
+                async for event in self.runner.stream_events(text):
+                    # Text chunks
+                    chunk_text = event.get("data")
+                    if chunk_text is not None:
+                        if chunk_text:
+                            self.output.write(chunk_text)
+                            self.output.flush()
+                        continue
+                    # Tool stream event
+                    event_type = event.get("type")
+                    if event_type == "tool_use_stream":
+                        current = event.get("current_tool_use")
+                        name = None
+                        if isinstance(current, dict):
+                            name = current.get("name")
+                        if name and name not in tool_seen:
+                            tool_seen.add(name)
+                            self.output.write(f"[using tool: {name}]")
+                            self.output.flush()
+            asyncio.run(_consume())
+        except KeyboardInterrupt:
+            self.output.write("\n")
+            self.output.flush()
+            raise
 
     def _write(self, text: str) -> None:
         self.output.write(text)

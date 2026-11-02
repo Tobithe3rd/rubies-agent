@@ -108,42 +108,31 @@ case "$g_out" in
 esac
 check "g. tuning set: 14 in-scope, 3 off-topic, 2 unanswerable; ids exist" "$g_ok" "$g_out"
 
-# ------------------------------------------------- h-l. live comparison (SKIP if LIVE=0)
+# ------------------------------------------------- h-l. live retrieval gates (separate script; SKIP if LIVE=0)
 if [ "$LIVE" != "1" ]; then
-  for n in \
-    "h. report file exists and contains every query" \
-    "i. in-scope refused at current threshold == 0 (rewrite on)" \
-    "j. off-topic answered == 0 (rewrite on)" \
-    "k. rewrite-on recall@4 >= rewrite-off recall@4"; do
-    skip "$n (needs AWS; LIVE=0)"
-  done
+  skip "live retrieval gates: scripts/checks/live_retrieval_gates.sh (needs AWS; LIVE=0)"
 else
-  # --- h-l. live comparison (same structure as check_chat5_step3.sh) ---
-  rm -f "eval/reports/pidgin_threshold_report.json"
-  off_out=$(python3 -m rag.threshold_report --queries "eval/datasets/pidgin_tuning_set.yaml" --rewrite off 2>&1)
-  printf '%s\n' "$off_out" | sed 's/^/INFO (off): /'
-  on_out=$(python3 -m rag.threshold_report --queries "eval/datasets/pidgin_tuning_set.yaml" --rewrite on 2>&1)
-  printf '%s\n' "$on_out" | sed 's/^/INFO (on): /'
-  echo "INFO: rewrite comparison complete (see above)"
+  gates_out=$(bash scripts/checks/live_retrieval_gates.sh 2>&1)
+  gates_rc=$?
+  printf '%s\n' "$gates_out" | grep -E "^(PASS|FAIL|ERROR|INFO|RESULT)"
+  if [ "$gates_rc" -eq 0 ]; then gates_ok=1; else gates_ok=0; fi
+  check "live retrieval gates pass (scripts/checks/live_retrieval_gates.sh, 12 checks)" "$gates_ok" "rc=${gates_rc}"
 fi
 
-# --------------------------------------------- P1-P5 live Pidgin (SKIP off)
-# These are described in the spec but run only LIVE=1; we leave SKIP markers.
+# --------------------------------------------- P1-P5 and N1-N3 live scenarios (separate script; SKIP if LIVE=0)
 if [ "$LIVE" != "1" ]; then
-  for p in P1 P2 P3 P4 P5; do skip "Live Pidgin scenario $p (needs AWS; LIVE=0)"; done
+  skip "live Pidgin and no-guessing scenarios P1-P5, N1-N3: scripts/checks/live_step4.sh (needs AWS; LIVE=0)"
 else
-  echo "INFO: live Pidgin scenarios P1-P5 would run here (LIVE=1)"
-fi
-
-# --------------------------------------------- N1-N3 no-guessing (SKIP off)
-if [ "$LIVE" != "1" ]; then
-  for n in N1 N2 N3; do skip "Live no-guessing scenario $n (needs AWS; LIVE=0)"; done
-else
-  echo "INFO: live no-guessing scenarios N1-N3 would run here (LIVE=1)"
+  scen_out=$(bash scripts/checks/live_step4.sh 2>&1)
+  scen_rc=$?
+  printf '%s\n' "$scen_out" | grep -E "^(PASS|FAIL|ERROR|INFO: Bedrock|RESULT)"
+  scen_n=$(printf '%s\n' "$scen_out" | grep -c '^PASS: [PN][1-5] ')
+  if [ "$scen_rc" -eq 0 ] && [ "$scen_n" -eq 8 ]; then scen_ok=1; else scen_ok=0; fi
+  check "live Pidgin and no-guessing scenarios pass (scripts/checks/live_step4.sh, 8 of 8)" "$scen_ok" "rc=${scen_rc}, passed=${scen_n}"
 fi
 
 # --- informational transcript / JSONL reminder ---
-echo "INFO: When LIVE=1, the script prints full transcripts (USER / AGENT / JSONL) as INFO lines for review. If any live scenario fails, the transcript and JSONL are preserved in /tmp/ for diagnosis. The script never edits prompts to chase a failure."
+echo "INFO: with LIVE=1 this script also runs live_step4.sh and live_retrieval_gates.sh; run them directly to see full transcripts."
 
 echo "RESULT: $passes passed, $fails failed"
 if [ "$fails" -ne 0 ]; then exit 1; fi

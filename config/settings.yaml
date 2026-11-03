@@ -87,13 +87,20 @@ adapters:
     port: 8002
     cors_origins:
       - "http://localhost:3000"
-    session_idle_seconds: 1800
-    session_max_age_seconds: 14400
+    session_idle_seconds: 900
+    session_max_age_seconds: 3600
+    history_max_events: 400
+    history_wait_seconds: 30
+    clear_transcript_on_verification_expiry: true
     max_sessions: 50
     max_message_chars: 2000
     allow_dev_otp: false
     otp_log_path: logs/otp.log
     error_message: "Sorry, something went wrong. Please try again."
+    stream_enabled: true
+    heartbeat_seconds: 15
+    max_stream_seconds: 120
+    panel_summary_max_chars: 500
 
 acceptance:
   max_attempts_per_scenario: 2

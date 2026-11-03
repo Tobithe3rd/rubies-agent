@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from string import Formatter
 from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from dotenv import load_dotenv
 
 
@@ -263,11 +264,18 @@ class WebAdapterConfig(BaseModel):
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     session_idle_seconds: int = Field(ge=60)
     session_max_age_seconds: int = Field(ge=60)
+    history_max_events: int = Field(ge=1)
+    history_wait_seconds: int = Field(ge=1)
+    clear_transcript_on_verification_expiry: bool = Field(strict=True, default=True)
     max_sessions: int = Field(ge=1)
     max_message_chars: int = Field(ge=1)
     allow_dev_otp: bool = Field(strict=True, default=False)
     otp_log_path: str
     error_message: str
+    stream_enabled: bool = Field(strict=True)
+    heartbeat_seconds: int = Field(ge=1)
+    max_stream_seconds: int = Field(ge=1)
+    panel_summary_max_chars: int = Field(default=500, ge=1)
 
     @field_validator("otp_log_path")
     @classmethod
@@ -429,12 +437,72 @@ KNOWN_TOOLS = frozenset({
 })
 
 
+class ToolLabels(BaseModel):
+    model_config = {"extra": "forbid"}
+    running: str
+    done: str
+    failed: str
+    awaiting: Optional[str] = None
+    no_action: Optional[str] = None
+
+    @field_validator("running", "done", "failed", "awaiting", "no_action")
+    @classmethod
+    def label_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("must not be empty")
+        return v
+
+
+RECEIPT_KIND_BY_TOOL = {
+    "open_dispute": "dispute",
+    "block_card": "card_block",
+    "handoff_to_human": "handoff",
+}
+RECEIPT_TEMPLATE_FIELDS = frozenset({"reference", "last4", "summary"})
+
+
+class ReceiptConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    kind: str
+    template: str
+
+    @field_validator("kind")
+    @classmethod
+    def known_kind(cls, v: str) -> str:
+        if v not in set(RECEIPT_KIND_BY_TOOL.values()):
+            raise ValueError(f"receipt.kind must be one of: {', '.join(sorted(set(RECEIPT_KIND_BY_TOOL.values())))}")
+        return v
+
+    @field_validator("template")
+    @classmethod
+    def valid_template(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("receipt.template must not be empty")
+        try:
+            fields = {
+                field.split(".")[0].split("[")[0]
+                for _, field, _, _ in Formatter().parse(v)
+                if field is not None
+            }
+        except ValueError as exc:
+            raise ValueError(f"receipt.template is invalid: {exc}") from exc
+        unknown = fields - RECEIPT_TEMPLATE_FIELDS
+        if unknown:
+            raise ValueError(
+                "receipt.template may only use "
+                f"{', '.join(sorted(RECEIPT_TEMPLATE_FIELDS))}; got {', '.join(sorted(unknown))}"
+            )
+        return v
+
+
 class ToolConfig(BaseModel):
     model_config = {"extra": "forbid"}
     enabled: bool
     requires_confirmation: bool
     requires_verified_session: bool
     description: str
+    labels: Optional[ToolLabels] = None
+    receipt: Optional[ReceiptConfig] = None
 
     @field_validator("description")
     @classmethod
@@ -442,6 +510,24 @@ class ToolConfig(BaseModel):
         if not v or not v.strip():
             raise ValueError("description must not be empty")
         return v
+
+    @model_validator(mode="after")
+    def labels_complete_for_enabled_tool(self):
+        if not self.enabled:
+            return self
+        if self.labels is None:
+            raise ValueError(
+                "labels are required for an enabled tool "
+                "(running, done, failed, plus awaiting/no_action for confirmation tools)"
+            )
+        missing = [key for key in ("running", "done", "failed") if not getattr(self.labels, key)]
+        if self.requires_confirmation:
+            for key in ("awaiting", "no_action"):
+                if not getattr(self.labels, key):
+                    missing.append(key)
+        if missing:
+            raise ValueError(f"labels missing: {', '.join(missing)}")
+        return self
 
 
 class ToolsConfig(BaseModel):
@@ -543,6 +629,13 @@ def load_config(config_dir: str = "config") -> AppConfig:
             for err in exc.errors():
                 loc = ".".join(str(p) for p in err.get("loc", ()))
                 errors.append(f"tools.yaml -> {key}.{loc}: {err.get('msg', 'invalid value')}")
+            continue
+        receipt = tools[key].receipt
+        expected_kind = RECEIPT_KIND_BY_TOOL.get(key)
+        if receipt and receipt.kind != expected_kind:
+            errors.append(
+                f"tools.yaml -> {key}.receipt.kind: must be {expected_kind!r} for this tool"
+            )
 
     # Load env (collect errors, don't stop)
     try:

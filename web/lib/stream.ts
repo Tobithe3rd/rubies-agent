@@ -14,11 +14,85 @@ export interface Citation {
   section: string;
 }
 
+export type ReceiptKind = "dispute" | "card_block" | "handoff";
+
+export interface SessionReceipt {
+  id: string;
+  kind: ReceiptKind;
+  reference: string | null;
+  summary: string;
+  at: string;
+}
+
+export interface SessionPanel {
+  verified: boolean;
+  phone_masked: string | null;
+  expires_in_seconds: number | null;
+  receipts: SessionReceipt[];
+}
+
+export function emptyPanel(): SessionPanel {
+  return {
+    verified: false,
+    phone_masked: null,
+    expires_in_seconds: null,
+    receipts: [],
+  };
+}
+
 export interface StreamHandlers {
   onStep?: (step: Step) => void;
   onText?: (delta: string) => void;
+  onPanel?: (panel: SessionPanel) => void;
   onDone?: (citations: Citation[]) => void;
   onError?: (message: string) => void;
+}
+
+function parseReceipt(value: unknown): SessionReceipt | null {
+  if (!value || typeof value !== "object") return null;
+  const receipt = value as Record<string, unknown>;
+  if (
+    typeof receipt.id !== "string" ||
+    (receipt.kind !== "dispute" &&
+      receipt.kind !== "card_block" &&
+      receipt.kind !== "handoff") ||
+    (receipt.reference !== null && typeof receipt.reference !== "string") ||
+    typeof receipt.summary !== "string" ||
+    typeof receipt.at !== "string"
+  ) {
+    return null;
+  }
+  return {
+    id: receipt.id,
+    kind: receipt.kind,
+    reference: receipt.reference,
+    summary: receipt.summary,
+    at: receipt.at,
+  };
+}
+
+function parsePanel(value: unknown): SessionPanel | null {
+  if (!value || typeof value !== "object") return null;
+  const panel = value as Record<string, unknown>;
+  if (
+    typeof panel.verified !== "boolean" ||
+    (panel.phone_masked !== null && typeof panel.phone_masked !== "string") ||
+    (panel.expires_in_seconds !== null &&
+      (typeof panel.expires_in_seconds !== "number" ||
+        !Number.isFinite(panel.expires_in_seconds))) ||
+    !Array.isArray(panel.receipts)
+  ) {
+    return null;
+  }
+
+  return {
+    verified: panel.verified,
+    phone_masked: panel.phone_masked,
+    expires_in_seconds: panel.expires_in_seconds,
+    receipts: panel.receipts
+      .map(parseReceipt)
+      .filter((receipt): receipt is SessionReceipt => receipt !== null),
+  };
 }
 
 export class StreamHttpError extends Error {
@@ -120,6 +194,9 @@ export async function streamMessage(
     } else if (parsed.event === "text") {
       const delta = (payload as { delta?: unknown }).delta;
       if (typeof delta === "string" && delta) handlers.onText?.(delta);
+    } else if (parsed.event === "panel") {
+      const panel = parsePanel(payload);
+      if (panel) handlers.onPanel?.(panel);
     } else if (parsed.event === "done") {
       const citations = (payload as { citations?: unknown }).citations;
       handlers.onDone?.(Array.isArray(citations) ? (citations as Citation[]) : []);

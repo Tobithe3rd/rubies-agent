@@ -235,6 +235,12 @@ body {
   font-size: 0.95em;
 }
 
+/* Keep wide tables readable by scrolling instead of shrinking. */
+.agent-text > div:has(> table) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .agent-text th,
 .agent-text td {
   border: 1px solid var(--border);

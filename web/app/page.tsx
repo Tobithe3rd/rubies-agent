@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ArrowUp, FileText, RotateCcw } from "lucide-react";
+import { useState, useCallback, useSyncExternalStore } from "react";
+import { ArrowUp, FileText, PanelRight, RotateCcw } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
@@ -19,6 +19,7 @@ import {
 import { Suggestion } from "@/components/ai-elements/suggestion";
 import { Loader } from "@/components/ai-elements/loader";
 import { StepPanel } from "@/components/step-panel";
+import { SessionPanel } from "@/components/session-panel";
 import { useChat } from "@/lib/use-chat";
 import { config } from "@/lib/config";
 import type { Citation } from "@/lib/stream";
@@ -29,6 +30,12 @@ const SUGGESTIONS = [
   "I lost my card, please block it",
   "Abeg, my money no gree enter o",
 ];
+
+function subscribeDesktopViewport(onChange: () => void) {
+  const media = window.matchMedia("(min-width: 1280px)");
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
 
 function Citations({ citations }: { citations: Citation[] }) {
   const seen = new Set<string>();
@@ -74,14 +81,37 @@ export default function HomePage() {
     setInput,
     loading,
     error,
+    panel,
+    panelReceivedAt,
     submit,
     stop,
     retry,
     newChat,
   } = useChat();
 
+  // Desktop opens the panel by default; the user's toggle overrides it.
+  const derivedDefault = useSyncExternalStore(
+    subscribeDesktopViewport,
+    () => window.matchMedia("(min-width: 1280px)").matches,
+    () => false
+  );
+  const [panelOverride, setPanelOverride] = useState<boolean | null>(null);
+  const panelOpen = panelOverride ?? derivedDefault;
+  const togglePanel = useCallback(
+    () => setPanelOverride((value) => !(value ?? derivedDefault)),
+    [derivedDefault]
+  );
+
   const [showOtp, setShowOtp] = useState(false);
   const [otpLine, setOtpLine] = useState("");
+
+  // The newest assistant reply may offer a confirmation choice.
+  const lastMessage = messages[messages.length - 1];
+  const lastStep = lastMessage?.steps[lastMessage.steps.length - 1];
+  const showQuickReplies =
+    lastMessage?.role === "assistant" &&
+    lastMessage.status !== "streaming" &&
+    lastStep?.status === "awaiting";
 
   const handleNewChat = useCallback(() => {
     setShowOtp(false);
@@ -116,49 +146,68 @@ export default function HomePage() {
     }
   }, [chatId, showOtp]);
 
-  return (
-    <main className="flex h-dvh flex-col bg-[var(--ground)] font-sans text-[var(--text)]">
-      <header className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div
-              className="flex size-7 shrink-0 items-center justify-center rounded-[7px] bg-[var(--accent)] text-[14px] font-bold text-white sm:size-8 sm:rounded-[8px] sm:text-[15px]"
-              aria-hidden="true"
-            >
-              R
-            </div>
-            <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em]">
-              Rubies MFB Support
-            </h1>
-          </div>
+  const handleQuickMessage = useCallback(
+    (message: string) => {
+      if (loading || !chatId) return;
+      submit(message);
+    },
+    [loading, chatId, submit]
+  );
 
-          <div className="flex shrink-0 items-center gap-2">
-            {config.demoOtp && (
+  return (
+    <main className="flex h-dvh bg-[var(--ground)] font-sans text-[var(--text)]">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
+          <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div
+                className="flex size-7 shrink-0 items-center justify-center rounded-[7px] bg-[var(--accent)] text-[14px] font-bold text-white sm:size-8 sm:rounded-[8px] sm:text-[15px]"
+                aria-hidden="true"
+              >
+                R
+              </div>
+              <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em]">
+                Rubies MFB Support
+              </h1>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              {config.demoOtp && (
+                <button
+                  type="button"
+                  onClick={handleOtp}
+                  className="rounded-lg border border-[var(--demo-border)] bg-[var(--demo-bg)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--demo-text)] transition-colors hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  aria-label="Show demo OTP"
+                  aria-expanded={showOtp}
+                >
+                  Demo OTP
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleOtp}
-                className="rounded-lg border border-[var(--demo-border)] bg-[var(--demo-bg)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--demo-text)] transition-colors hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                aria-label="Show demo OTP"
-                aria-expanded={showOtp}
+                onClick={togglePanel}
+                aria-label="Session"
+                aria-expanded={panelOpen}
+                className="inline-flex size-11 items-center justify-center gap-1.5 rounded-lg border border-[var(--input-border)] bg-[var(--surface)] text-[13px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--avatar-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] sm:h-9 sm:w-auto sm:px-3"
               >
-                Demo OTP
+                <PanelRight size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Session</span>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="rounded-lg border border-[var(--input-border)] bg-[var(--surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--avatar-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-            >
-              New chat
-            </button>
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="rounded-lg border border-[var(--input-border)] bg-[var(--surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--avatar-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              >
+                New chat
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       <Conversation className="min-h-0 flex-1">
         <ConversationContent
           className={cn(
-            "mx-auto w-full max-w-3xl gap-5 px-4 py-6 sm:px-6",
+            "mx-auto w-full max-w-3xl gap-5 px-4 py-6 pb-8 sm:px-6",
             messages.length === 0 && "min-h-full justify-center"
           )}
         >
@@ -217,7 +266,10 @@ export default function HomePage() {
                 >
                   <MessageContent className="w-full max-w-full gap-0 overflow-visible p-0 text-[15px] leading-[1.6] text-[var(--text)]">
                     {message.steps.length > 0 && (
-                      <StepPanel steps={message.steps} />
+                      <StepPanel
+                        steps={message.steps}
+                        streaming={message.status === "streaming"}
+                      />
                     )}
 
                     {message.text ? (
@@ -227,7 +279,9 @@ export default function HomePage() {
                           message.status === "streaming" ? "" : undefined
                         }
                       >
-                        <MessageResponse>{message.text}</MessageResponse>
+                        <MessageResponse controls={{ table: false }}>
+                          {message.text}
+                        </MessageResponse>
                       </div>
                     ) : message.status === "streaming" ? (
                       <div className="flex items-center gap-2 py-1 text-[14px] text-[var(--muted)]">
@@ -237,6 +291,22 @@ export default function HomePage() {
                     ) : null}
 
                     <Citations citations={message.citations} />
+
+                    {message.id === lastMessage?.id && showQuickReplies && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {["Yes, go ahead", "Cancel"].map((reply) => (
+                          <button
+                            key={reply}
+                            type="button"
+                            disabled={loading || !chatId}
+                            onClick={() => handleQuickMessage(reply)}
+                            className="inline-flex min-h-11 items-center rounded-full border border-[var(--input-border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--avatar-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9"
+                          >
+                            {reply}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
                     {(message.status === "stopped" ||
                       (message.status === "error" && message.canRetry)) && (
@@ -345,8 +415,20 @@ export default function HomePage() {
             Rubies will never ask for your PIN, password or full card number in
             chat.
           </p>
+          </div>
         </div>
       </div>
+
+      <SessionPanel
+        panel={panel}
+        receivedAt={panelReceivedAt}
+        open={panelOpen}
+        onClose={() => setPanelOverride(false)}
+        onEndChat={handleNewChat}
+        onQuickMessage={handleQuickMessage}
+        loading={loading}
+        chatId={chatId}
+      />
     </main>
   );
 }

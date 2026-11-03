@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createChat, deleteChat, ChatExpiredError } from "@/lib/api";
 import {
+  emptyPanel,
   streamMessage,
   StreamHttpError,
   type Citation,
+  type SessionPanel,
   type Step,
 } from "@/lib/stream";
 
@@ -55,6 +57,8 @@ export function useChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [panel, setPanel] = useState<SessionPanel>(emptyPanel);
+  const [panelReceivedAt, setPanelReceivedAt] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const patchMessage = useCallback(
@@ -69,6 +73,8 @@ export function useChat() {
   const initChat = useCallback(async () => {
     try {
       setLoading(true);
+      setPanel(emptyPanel());
+      setPanelReceivedAt(null);
       const id = await createChat();
       setChatId(id);
       setMessages([]);
@@ -111,12 +117,16 @@ export function useChat() {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      let streamedText = "";
+      let stepsSinceText = false;
+
       try {
         await streamMessage(
           chatId,
           trimmed,
           {
             onStep: (step) => {
+              stepsSinceText = true;
               patchMessage(assistantId, (message) => {
                 const exists = message.steps.some((s) => s.id === step.id);
                 return {
@@ -128,10 +138,17 @@ export function useChat() {
               });
             },
             onText: (delta) => {
+              const separator = stepsSinceText && streamedText ? "\n\n" : "";
+              streamedText += separator + delta;
+              stepsSinceText = false;
               patchMessage(assistantId, (message) => ({
                 ...message,
-                text: message.text + delta,
+                text: streamedText,
               }));
+            },
+            onPanel: (nextPanel) => {
+              setPanel(nextPanel);
+              setPanelReceivedAt(Date.now());
             },
             onDone: (citations) => {
               patchMessage(assistantId, (message) => ({
@@ -161,6 +178,8 @@ export function useChat() {
         } else if (e instanceof ChatExpiredError) {
           setError("Your session expired. Starting a new chat.");
           setMessages([]);
+          setPanel(emptyPanel());
+          setPanelReceivedAt(null);
           try {
             const newId = await createChat();
             setChatId(newId);
@@ -215,6 +234,8 @@ export function useChat() {
     const previousId = chatId;
     setMessages([]);
     setError(null);
+    setPanel(emptyPanel());
+    setPanelReceivedAt(null);
     if (previousId) {
       try {
         await deleteChat(previousId);
@@ -232,6 +253,8 @@ export function useChat() {
     setInput,
     loading,
     error,
+    panel,
+    panelReceivedAt,
     submit,
     stop,
     retry,

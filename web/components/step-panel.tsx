@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, TriangleAlert } from "lucide-react";
 import { Loader } from "@/components/ai-elements/loader";
 import { cn } from "@/lib/utils";
@@ -19,8 +19,21 @@ function StepIcon({ status }: { status: Step["status"] }) {
   return <Clock3 size={14} className="text-[var(--muted)]" />;
 }
 
-export function StepPanel({ steps }: { steps: Step[] }) {
-  const [open, setOpen] = useState(true);
+export function StepPanel({
+  steps,
+  streaming,
+}: {
+  steps: Step[];
+  streaming: boolean;
+}) {
+  const [open, setOpen] = useState(streaming);
+  const wasStreaming = useRef(streaming);
+
+  // Collapse to the header once the reply finishes; the user can expand again.
+  useEffect(() => {
+    if (wasStreaming.current && !streaming) setOpen(false);
+    wasStreaming.current = streaming;
+  }, [streaming]);
 
   if (steps.length === 0) return null;
 

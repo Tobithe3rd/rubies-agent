@@ -31,7 +31,7 @@ export function StepPanel({ steps }: { steps: Step[] }) {
     >
       <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
         <p className="text-[13px] font-medium text-[var(--text)]">
-          What I did · {steps.length} steps
+          What I did · {steps.length} {steps.length === 1 ? "step" : "steps"}
         </p>
         <button
           type="button"

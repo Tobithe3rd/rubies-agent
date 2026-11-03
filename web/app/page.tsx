@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ArrowUp, RotateCcw } from "lucide-react";
+import { ArrowUp, FileText, RotateCcw } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
@@ -13,7 +13,6 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
-  PromptInputFooter,
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
@@ -32,24 +31,37 @@ const SUGGESTIONS = [
 ];
 
 function Citations({ citations }: { citations: Citation[] }) {
-  if (citations.length === 0) return null;
+  const seen = new Set<string>();
+  const unique = citations.filter((citation) => {
+    const key = `${citation.document}\u0000${citation.section}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (unique.length === 0) return null;
 
   return (
     <div className="mt-3 border-t border-[var(--border)] pt-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-        Sources
-      </p>
-      <ul className="mt-1.5 space-y-1">
-        {citations.map((citation, index) => (
-          <li
-            key={`${citation.document}-${citation.section}-${index}`}
-            className="text-[13px] leading-snug text-[var(--muted)]"
+      <p className="text-[12px] text-[var(--muted)]">Sources checked</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {unique.map((citation) => (
+          <span
+            key={`${citation.document}-${citation.section}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--avatar-bg)] px-2.5 py-1 text-[12.5px] leading-snug text-[var(--text)]"
           >
-            <span className="text-[var(--text)]">{citation.document}</span>
-            {citation.section ? <> · {citation.section}</> : null}
-          </li>
+            <FileText
+              size={14}
+              className="shrink-0 text-[var(--muted)]"
+              aria-hidden="true"
+            />
+            {citation.document}
+            {citation.section ? (
+              <span className="text-[var(--muted)]"> · {citation.section}</span>
+            ) : null}
+          </span>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
@@ -110,7 +122,7 @@ export default function HomePage() {
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[15px] font-bold text-white"
+              className="flex size-7 shrink-0 items-center justify-center rounded-[7px] bg-[var(--accent)] text-[14px] font-bold text-white sm:size-8 sm:rounded-[8px] sm:text-[15px]"
               aria-hidden="true"
             >
               R
@@ -153,7 +165,7 @@ export default function HomePage() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center px-2 py-12 text-center">
               <div
-                className="flex size-12 items-center justify-center rounded-full bg-[var(--accent)] text-[21px] font-bold text-white"
+                className="flex size-12 items-center justify-center rounded-[12px] bg-[var(--accent)] text-[21px] font-bold text-white"
                 aria-hidden="true"
               >
                 R
@@ -165,14 +177,14 @@ export default function HomePage() {
                 Ask about fees, cards, transfers or loans. For account tasks I’ll
                 verify you first.
               </p>
-              <div className="mt-7 flex flex-wrap justify-center gap-2">
+              <div className="mt-7 flex w-full max-w-[480px] flex-col items-stretch gap-2">
                 {SUGGESTIONS.map((suggestion) => (
                   <Suggestion
                     key={suggestion}
                     suggestion={suggestion}
                     onClick={(value) => submit(value)}
                     disabled={loading || !chatId}
-                    className="h-auto max-w-full whitespace-normal rounded-full border-[var(--input-border)] bg-[var(--surface)] px-4 py-2 text-left text-[13px] font-normal leading-snug text-[var(--text)] hover:bg-[var(--avatar-bg)] hover:text-[var(--text)]"
+                    className="h-auto min-h-11 w-full max-w-full justify-start whitespace-normal break-words rounded-full border-[var(--input-border)] bg-[var(--surface)] px-4 py-2 text-left text-[13px] font-normal leading-snug text-[var(--text)] hover:bg-[var(--avatar-bg)] hover:text-[var(--text)]"
                   />
                 ))}
               </div>
@@ -184,17 +196,16 @@ export default function HomePage() {
               <Message
                 key={message.id}
                 from="user"
-                className="max-w-[70%]"
                 aria-label="Your message"
               >
-                <div className="whitespace-pre-wrap break-words rounded-tl-[18px] rounded-tr-[18px] rounded-bl-[18px] rounded-br-[4px] bg-[var(--accent)] px-4 py-2.5 text-[15px] leading-[1.5] text-white">
+                <div className="w-fit max-w-[70%] self-end whitespace-pre-wrap break-words rounded-tl-[18px] rounded-tr-[18px] rounded-bl-[18px] rounded-br-[4px] bg-[var(--accent)] px-4 py-2.5 text-[15px] leading-[1.5] text-white">
                   {message.text}
                 </div>
               </Message>
             ) : (
               <div key={message.id} className="flex items-start gap-3">
                 <div
-                  className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--avatar-bg)] text-[12px] font-semibold text-[var(--accent)]"
+                  className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--avatar-bg)] text-[12px] font-semibold text-[var(--avatar-fg)]"
                   aria-hidden="true"
                 >
                   R
@@ -210,22 +221,20 @@ export default function HomePage() {
                     )}
 
                     {message.text ? (
-                      <MessageResponse className="agent-text">
-                        {message.text}
-                      </MessageResponse>
+                      <div
+                        className="agent-text"
+                        data-streaming={
+                          message.status === "streaming" ? "" : undefined
+                        }
+                      >
+                        <MessageResponse>{message.text}</MessageResponse>
+                      </div>
                     ) : message.status === "streaming" ? (
                       <div className="flex items-center gap-2 py-1 text-[14px] text-[var(--muted)]">
                         <Loader size={14} />
                         Thinking…
                       </div>
                     ) : null}
-
-                    {message.status === "streaming" && message.text && (
-                      <span
-                        className="ml-0.5 inline-block h-4 w-[2px] translate-y-[2px] animate-pulse bg-[var(--muted)]"
-                        aria-hidden="true"
-                      />
-                    )}
 
                     <Citations citations={message.citations} />
 
@@ -259,7 +268,7 @@ export default function HomePage() {
       </Conversation>
 
       <div className="shrink-0 bg-[var(--ground)]">
-        <div className="mx-auto w-full max-w-3xl px-4 pb-4 pt-2 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:px-6">
           {showOtp && otpLine && (
             <div className="mb-2 rounded-xl border border-[var(--demo-border)] bg-[var(--demo-bg)] px-4 py-2.5 text-[var(--demo-text)]">
               <div className="flex items-center gap-2">
@@ -304,26 +313,32 @@ export default function HomePage() {
             <PromptInputTextarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Message Rubies support"
+              placeholder={
+                loading ? "Rubies is replying…" : "Message Rubies support"
+              }
               aria-label="Message"
               disabled={loading || !chatId}
-              className="max-h-40 min-h-[44px] px-4 pb-1 pt-3.5 font-sans text-[15px] text-[var(--text)] placeholder:text-[var(--muted)]"
+              className="max-h-[156px] min-h-11 flex-1 px-4 py-2.5 font-sans text-[15px] leading-[1.5] text-[var(--text)] placeholder:text-[var(--muted)]"
             />
-            <PromptInputFooter className="px-2.5 pb-2.5 pt-0">
-              <span />
-              <PromptInputSubmit
-                status={loading && chatId ? "streaming" : "ready"}
-                onStop={stop}
-                disabled={!chatId || (!loading && !input.trim())}
-                className="size-9 shrink-0 rounded-full bg-[var(--accent)] text-white shadow-sm hover:bg-[var(--accent)] hover:opacity-90 disabled:opacity-40"
-              >
-                {loading && chatId ? (
-                  <span className="size-3 rounded-[2px] bg-white" />
-                ) : (
-                  <ArrowUp size={18} strokeWidth={2.5} />
-                )}
-              </PromptInputSubmit>
-            </PromptInputFooter>
+            <PromptInputSubmit
+              status={loading && chatId ? "streaming" : "ready"}
+              onStop={stop}
+              disabled={!chatId || (!loading && !input.trim())}
+              className={cn(
+                "size-11 shrink-0 rounded-full shadow-sm transition-colors disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-100",
+                loading && chatId
+                  ? "bg-[var(--stop-bg)] text-[var(--stop-fg)] hover:bg-[var(--stop-bg)]"
+                  : input.trim()
+                    ? "bg-[var(--accent)] text-white hover:bg-[var(--accent)] hover:opacity-90"
+                    : "bg-[var(--border)] text-[var(--muted)] hover:bg-[var(--border)]"
+              )}
+            >
+              {loading && chatId ? (
+                <span className="size-3 rounded-[2px] bg-[var(--stop-fg)]" />
+              ) : (
+                <ArrowUp size={18} strokeWidth={2.5} />
+              )}
+            </PromptInputSubmit>
           </PromptInput>
 
           <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--muted)]">

@@ -9,6 +9,7 @@
   --muted: #6b6560;
   --accent: #b3123b;
   --avatar-bg: #f1efee;
+  --avatar-fg: #b3123b;
   --success: #166534;
   --failed-bg: #fff7ed;
   --failed-border: #fed7aa;
@@ -16,6 +17,9 @@
   --demo-bg: #fff7e6;
   --demo-border: #f0d9a8;
   --demo-text: #5c4310;
+
+  --stop-bg: #1c1917;
+  --stop-fg: #ffffff;
 
   --radius: 0.75rem;
 
@@ -50,6 +54,7 @@
     --muted: #a8a29e;
     --accent: #d91e45;
     --avatar-bg: #292624;
+    --avatar-fg: var(--text);
     --success: #4ade80;
     --failed-bg: #2a1c12;
     --failed-border: #7c2d12;
@@ -57,6 +62,8 @@
     --demo-bg: #2a2415;
     --demo-border: #5c4310;
     --demo-text: #fde68a;
+    --stop-bg: #f5f5f4;
+    --stop-fg: #1c1917;
     --primary-foreground: #ffffff;
     --destructive: #fca5a5;
   }
@@ -110,6 +117,10 @@ body {
 
 /* Composer: a 16px white box with a ruby focus ring. */
 .composer [data-slot="input-group"] {
+  min-height: 52px;
+  align-items: flex-end;
+  gap: 0;
+  padding: 3px;
   border-radius: 16px;
   border-color: var(--input-border);
   background-color: var(--surface);
@@ -229,4 +240,47 @@ body {
   border: 1px solid var(--border);
   padding: 0.35rem 0.5rem;
   text-align: left;
+}
+
+/* Streaming caret on the last block, list item or code line. */
+.agent-text[data-streaming] p:last-child::after,
+.agent-text[data-streaming] h1:last-child::after,
+.agent-text[data-streaming] h2:last-child::after,
+.agent-text[data-streaming] h3:last-child::after,
+.agent-text[data-streaming] ul:last-child > li:last-child::after,
+.agent-text[data-streaming] ol:last-child > li:last-child::after,
+.agent-text[data-streaming] pre:last-child code::after,
+.agent-text[data-streaming] blockquote > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background-color: var(--muted);
+  animation: caret-blink 1.1s steps(1, end) infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-text[data-streaming] p:last-child::after,
+  .agent-text[data-streaming] h1:last-child::after,
+  .agent-text[data-streaming] h2:last-child::after,
+  .agent-text[data-streaming] h3:last-child::after,
+  .agent-text[data-streaming] ul:last-child > li:last-child::after,
+  .agent-text[data-streaming] ol:last-child > li:last-child::after,
+  .agent-text[data-streaming] pre:last-child code::after,
+  .agent-text[data-streaming] blockquote > :last-child::after {
+    animation: none;
+  }
 }

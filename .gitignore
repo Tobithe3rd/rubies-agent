@@ -16,5 +16,10 @@ eval/reports/pidgin_threshold_report.json
 .idea/
 .vscode/
 
+# Web frontend (Next.js) build artifacts
+web/node_modules/
+web/.next/
+web/.env.local
+
 # Keep tracked files in otherwise-empty directories
 !.gitkeep

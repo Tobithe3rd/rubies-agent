@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+:root {
+  --ground: #fafaf9;
+  --surface: #ffffff;
+  --border: #e7e5e4;
+  --input-border: #d6d3d1;
+  --text: #1c1917;
+  --muted: #6b6560;
+  --accent: #b3123b;
+  --avatar-bg: #f1efee;
+  --success: #166534;
+  --failed-bg: #fff7ed;
+  --failed-border: #fed7aa;
+  --failed-text: #9a3412;
+  --demo-bg: #fff7e6;
+  --demo-border: #f0d9a8;
+  --demo-text: #5c4310;
+
+  --radius: 0.75rem;
+
+  /* shadcn/ui aliases */
+  --background: var(--ground);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--avatar-bg);
+  --secondary-foreground: var(--text);
+  --muted-surface: var(--avatar-bg);
+  --muted-foreground: var(--muted);
+  --accent-surface: var(--avatar-bg);
+  --accent-foreground: var(--text);
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --input: var(--input-border);
+  --ring: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #151413;
+    --surface: #1c1a19;
+    --border: #2e2b29;
+    --input-border: #44403c;
+    --text: #f5f5f4;
+    --muted: #a8a29e;
+    --accent: #d91e45;
+    --avatar-bg: #292624;
+    --success: #4ade80;
+    --failed-bg: #2a1c12;
+    --failed-border: #7c2d12;
+    --failed-text: #fdba74;
+    --demo-bg: #2a2415;
+    --demo-border: #5c4310;
+    --demo-text: #fde68a;
+    --primary-foreground: #ffffff;
+    --destructive: #fca5a5;
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted-surface);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-surface);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+*,
+::before,
+::after {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--ground);
+  color: var(--text);
+}
+
+/* Composer: a 16px white box with a ruby focus ring. */
+.composer [data-slot="input-group"] {
+  border-radius: 16px;
+  border-color: var(--input-border);
+  background-color: var(--surface);
+  box-shadow: 0 1px 2px rgb(28 25 23 / 0.04);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.composer [data-slot="input-group"]:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.composer [data-slot="input-group-control"] {
+  color: var(--text);
+}
+
+.composer [data-slot="input-group-control"]::placeholder {
+  color: var(--muted);
+}
+
+/* Markdown inside agent replies. */
+.agent-text {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.agent-text p {
+  margin: 0 0 0.7rem;
+}
+
+.agent-text p:last-child {
+  margin-bottom: 0;
+}
+
+.agent-text ul,
+.agent-text ol {
+  margin: 0 0 0.7rem;
+  padding-left: 1.3rem;
+}
+
+.agent-text ul {
+  list-style: disc;
+}
+
+.agent-text ol {
+  list-style: decimal;
+}
+
+.agent-text li {
+  margin: 0.15rem 0;
+}
+
+.agent-text strong {
+  font-weight: 600;
+}
+
+.agent-text a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.agent-text h1,
+.agent-text h2,
+.agent-text h3 {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.agent-text h1 {
+  font-size: 1.2em;
+}
+
+.agent-text h2 {
+  font-size: 1.1em;
+}
+
+.agent-text code {
+  border-radius: 4px;
+  background-color: var(--avatar-bg);
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}
+
+.agent-text pre {
+  margin: 0 0 0.7rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  background-color: var(--avatar-bg);
+  padding: 0.75rem;
+}
+
+.agent-text pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.agent-text blockquote {
+  margin: 0 0 0.7rem;
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--muted);
+}
+
+.agent-text table {
+  width: 100%;
+  margin: 0 0 0.7rem;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.agent-text th,
+.agent-text td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}

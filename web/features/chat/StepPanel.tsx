@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, TriangleAlert } from "lucide-react";
 import { Loader } from "@/components/ai-elements/loader";
 import { cn } from "@/lib/utils";
-import type { Step } from "@/lib/stream";
+import { copy } from "@/core/config";
+import type { Step } from "@/core/contract";
 
 function StepIcon({ status }: { status: Step["status"] }) {
   if (status === "running") {
@@ -40,11 +41,12 @@ export function StepPanel({
   return (
     <section
       className="mb-3 overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--surface)]"
-      aria-label="What the agent did"
+      aria-label={copy.steps.aria}
     >
       <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
         <p className="text-[13px] font-medium text-[var(--text)]">
-          What I did · {steps.length} {steps.length === 1 ? "step" : "steps"}
+          {copy.steps.title} · {steps.length}{" "}
+          {steps.length === 1 ? copy.steps.step : copy.steps.steps}
         </p>
         <button
           type="button"
@@ -52,7 +54,7 @@ export function StepPanel({
           className="rounded-md px-1.5 py-0.5 text-[12px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           aria-expanded={open}
         >
-          {open ? "Hide" : "Show"}
+          {open ? copy.steps.hide : copy.steps.show}
         </button>
       </div>
 

@@ -1,0 +1,26 @@
+{
+  "name": "handoff",
+  "events": [
+    { "event": "step", "data": { "id": "handoff", "status": "running", "label": "Passing you to a human agent" } },
+    { "event": "step", "data": { "id": "handoff", "status": "done", "label": "Ticket created" } },
+    { "event": "text", "data": { "delta": "I’ve passed this to a human agent. Your ticket is HT-123." } },
+    {
+      "event": "panel",
+      "data": {
+        "verified": false,
+        "phone_masked": null,
+        "expires_in_seconds": null,
+        "receipts": [
+          {
+            "id": "receipt-2",
+            "kind": "handoff",
+            "reference": "HT-123",
+            "summary": "Passed to a human agent: customer asked for a person.",
+            "at": "2026-01-01T10:01:05+01:00"
+          }
+        ]
+      }
+    },
+    { "event": "done", "data": { "citations": [] } }
+  ]
+}

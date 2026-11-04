@@ -1,0 +1,11 @@
+{
+  "name": "lost-card",
+  "events": [
+    { "event": "step", "data": { "id": "verify", "status": "running", "label": "Verifying you" } },
+    { "event": "step", "data": { "id": "verify", "status": "done", "label": "Verified you" } },
+    { "event": "step", "data": { "id": "block", "status": "running", "label": "Checking your card" } },
+    { "event": "step", "data": { "id": "block", "status": "awaiting", "label": "Waiting for your confirmation" } },
+    { "event": "text", "data": { "delta": "Shall I block the card ending 0001?" } },
+    { "event": "done", "data": { "citations": [] } }
+  ]
+}

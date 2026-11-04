@@ -13,3 +13,5 @@ web_module:
     - "web/node_modules/**"
     - "web/.next/**"
     - "web/next-env.d.ts"
+    - "web/pnpm-lock.yaml"
+    - "web/tsconfig.tsbuildinfo"

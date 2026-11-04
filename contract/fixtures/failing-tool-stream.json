@@ -1,0 +1,9 @@
+{
+  "name": "failing-tool",
+  "events": [
+    { "event": "step", "data": { "id": "lookup", "status": "running", "label": "Checking your transfer" } },
+    { "event": "step", "data": { "id": "lookup", "status": "failed", "label": "Couldn’t check your transfer" } },
+    { "event": "text", "data": { "delta": "The transfer lookup failed. Please try again or ask for a human agent." } },
+    { "event": "done", "data": { "citations": [] } }
+  ]
+}

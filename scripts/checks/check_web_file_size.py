@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Enforce the web module line limit from config/quality.yaml.
 
-Lines of code exclude blank lines and lines whose first non-space
-characters are '#' or '//'.
+Lines of code exclude blank lines and comments, matching ESLint's
+max-lines skipBlankLines + skipComments behaviour. That includes line
+comments, block comments and JSX comment-only lines such as {/* x */}.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "config" / "quality.yaml"
+HASH_COMMENT_SUFFIXES = {".py", ".yaml", ".yml", ".sh", ".toml", ".env"}
 
 
 def load_quality(path: Path = CONFIG_PATH) -> dict:
@@ -22,13 +24,70 @@ def load_quality(path: Path = CONFIG_PATH) -> dict:
     return data.get("web_module", {})
 
 
-def count_lines(path: Path) -> int:
-    count = 0
-    for line in path.read_text(errors="replace").splitlines():
+def _strip_jsx_wrappers(line: str) -> str:
+    stripped = line.strip()
+    if stripped.startswith("{/*"):
+        line = line.replace("{", " ", 1)
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped.startswith("//"):
-            continue
-        count += 1
+    if stripped.endswith("*/}"):
+        index = line.rfind("*/}")
+        line = line[: index + 2] + " " + line[index + 3 :]
+    return line
+
+
+def count_lines(path: Path) -> int:
+    suffix = path.suffix.lower()
+    in_block = False
+    in_string: str | None = None
+    escaped = False
+    count = 0
+
+    for raw in path.read_text(errors="replace").splitlines():
+        line = _strip_jsx_wrappers(raw)
+        has_code = False
+        index = 0
+
+        while index < len(line):
+            char = line[index]
+
+            if in_block:
+                if line.startswith("*/", index):
+                    in_block = False
+                    index += 2
+                else:
+                    index += 1
+                continue
+
+            if in_string is not None:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == in_string:
+                    in_string = None
+                index += 1
+                continue
+
+            if line.startswith("//", index):
+                break
+            if line.startswith("/*", index):
+                in_block = True
+                index += 2
+                continue
+            if char == "#" and suffix in HASH_COMMENT_SUFFIXES:
+                break
+            if char in {"'", '"', "`"}:
+                in_string = char
+                has_code = True
+                index += 1
+                continue
+            if not char.isspace():
+                has_code = True
+            index += 1
+
+        if has_code:
+            count += 1
+
     return count
 
 

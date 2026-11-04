@@ -1,7 +1,12 @@
-import type { ChatMessage, MessageStatus } from "@/lib/use-chat";
-import type { Citation, Step, StepStatus } from "@/lib/stream";
+import type {
+  ChatMessage,
+  Citation,
+  MessageStatus,
+  Step,
+  StepStatus,
+} from "@/core/contract";
+import { isCitation, isStep } from "@/core/contract";
 
-const STEP_STATUSES: StepStatus[] = ["running", "done", "failed", "awaiting"];
 const MESSAGE_STATUSES: MessageStatus[] = [
   "streaming",
   "done",
@@ -11,22 +16,6 @@ const MESSAGE_STATUSES: MessageStatus[] = [
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
-}
-
-function isStep(value: unknown): value is Step {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.id === "string" &&
-    typeof value.label === "string" &&
-    STEP_STATUSES.includes(value.status as StepStatus)
-  );
-}
-
-function isCitation(value: unknown): value is Citation {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.document === "string" && typeof value.section === "string"
-  );
 }
 
 function mapAgentEvents(
@@ -58,7 +47,7 @@ function mapAgentEvents(
       const index = steps.findIndex((step) => step.id === event.id);
       const step: Step = {
         id: event.id,
-        status: event.status,
+        status: event.status as StepStatus,
         label: event.label,
       };
       if (index === -1) steps.push(step);
@@ -69,9 +58,7 @@ function mapAgentEvents(
       stepsSinceText = false;
     } else if (event.type === "done") {
       if (Array.isArray(event.citations)) {
-        for (const citation of event.citations) {
-          if (isCitation(citation)) citations.push(citation);
-        }
+        citations.push(...event.citations.filter(isCitation));
       }
     } else if (event.type === "error") {
       sawError = true;
@@ -92,6 +79,7 @@ function mapAgentEvents(
   };
 }
 
+/** Map the adapter's history payload into the chat message shape. */
 export function mapHistoryMessages(raw: unknown): ChatMessage[] {
   if (!Array.isArray(raw)) return [];
 

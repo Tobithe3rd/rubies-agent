@@ -1,0 +1,51 @@
+{
+  "events": {
+    "step": {
+      "required": ["id", "status", "label"],
+      "properties": {
+        "id": "string",
+        "status": ["running", "done", "failed", "awaiting"],
+        "label": "string"
+      }
+    },
+    "text": {
+      "required": ["delta"],
+      "properties": { "delta": "string" }
+    },
+    "done": {
+      "required": ["citations"],
+      "properties": { "citations": "array" }
+    },
+    "panel": {
+      "required": ["verified", "phone_masked", "expires_in_seconds", "receipts"],
+      "properties": {
+        "verified": "boolean",
+        "phone_masked": ["string", "null"],
+        "expires_in_seconds": ["number", "null"],
+        "receipts": "array"
+      }
+    },
+    "error": {
+      "required": ["message"],
+      "properties": { "message": "string" }
+    }
+  },
+  "receipt": {
+    "required": ["id", "kind", "reference", "summary", "at"],
+    "kinds": ["dispute", "card_block", "handoff"]
+  },
+  "history": {
+    "required": ["messages", "panel"],
+    "message": {
+      "user": { "required": ["role", "text"] },
+      "agent": { "required": ["role", "events", "status"] }
+    },
+    "statuses": ["streaming", "done", "stopped", "error"],
+    "agent_event": {
+      "step": { "required": ["type", "id", "status", "label"] },
+      "text": { "required": ["type", "text"] },
+      "done": { "required": ["type", "citations"] },
+      "error": { "required": ["type", "message"] }
+    }
+  }
+}

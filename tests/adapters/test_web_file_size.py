@@ -40,6 +40,26 @@ def test_count_lines_ignores_blank_comments_and_slashes(tmp_path):
     assert size_check.count_lines(path) == 3
 
 
+def test_count_lines_treats_block_and_jsx_comments_as_comments(tmp_path):
+    path = tmp_path / "sample.tsx"
+    path.write_text(
+        "/* block comment\n"
+        "   still a comment */\n"
+        "const a = 1;\n"
+        "{/* single line jsx comment */}\n"
+        "{/* multi line jsx\n"
+        "    comment */}\n"
+        "const b = /* inline */ 2;\n"
+    )
+    assert size_check.count_lines(path) == 2
+
+
+def test_count_lines_does_not_treat_css_hashes_as_comments(tmp_path):
+    path = tmp_path / "sample.css"
+    path.write_text("--accent: #b3123b;\n#main { color: red; }\n")
+    assert size_check.count_lines(path) == 2
+
+
 def test_collect_files_honours_include_and_exempt_globs(tmp_path):
     (tmp_path / "web" / "components" / "ui").mkdir(parents=True)
     (tmp_path / "web" / "node_modules").mkdir(parents=True)
@@ -88,3 +108,9 @@ def test_scope_flag_limits_the_checked_files(tmp_path, capsys):
     assert rc == 0
     assert "web/a.tsx" in web_output
     assert "src/a.py" not in web_output
+
+    rc = size_check.main(["--scope", "all"], root=tmp_path, config_path=config)
+    all_output = capsys.readouterr().out
+    assert rc == 0
+    assert "web/a.tsx" in all_output
+    assert "src/a.py" in all_output

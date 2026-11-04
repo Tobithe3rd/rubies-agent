@@ -1,0 +1,40 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "text": "My card is missing",
+      "at": "2026-01-01T10:00:00+01:00"
+    },
+    {
+      "role": "agent",
+      "status": "done",
+      "at": "2026-01-01T10:00:05+01:00",
+      "events": [
+        { "type": "step", "id": "step-a", "status": "done", "label": "Verified you" },
+        { "type": "text", "text": "I can help with that." },
+        { "type": "step", "id": "step-b", "status": "awaiting", "label": "Waiting for you" },
+        { "type": "text", "text": "Shall I block the card?" },
+        {
+          "type": "done",
+          "citations": [
+            { "document": "Card Policy", "section": "2. Blocking a card" }
+          ]
+        }
+      ]
+    }
+  ],
+  "panel": {
+    "verified": true,
+    "phone_masked": "+234 ••• ••• 4567",
+    "expires_in_seconds": 600,
+    "receipts": [
+      {
+        "id": "receipt-1",
+        "kind": "dispute",
+        "reference": "RUB-DB-002",
+        "summary": "Dispute opened for RUB-DB-002.",
+        "at": "2026-01-01T10:00:05+01:00"
+      }
+    ]
+  }
+}

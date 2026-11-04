@@ -1,0 +1,26 @@
+{
+  "name": "blocked-card",
+  "events": [
+    { "event": "step", "data": { "id": "block", "status": "running", "label": "Blocking your card" } },
+    { "event": "step", "data": { "id": "block", "status": "done", "label": "Card blocked" } },
+    { "event": "text", "data": { "delta": "Done — the card ending 0001 is blocked." } },
+    {
+      "event": "panel",
+      "data": {
+        "verified": true,
+        "phone_masked": "+234 ••• ••• 4567",
+        "expires_in_seconds": 900,
+        "receipts": [
+          {
+            "id": "receipt-1",
+            "kind": "card_block",
+            "reference": null,
+            "summary": "Card ending 0001 blocked.",
+            "at": "2026-01-01T10:00:05+01:00"
+          }
+        ]
+      }
+    },
+    { "event": "done", "data": { "citations": [] } }
+  ]
+}

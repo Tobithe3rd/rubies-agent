@@ -1,9 +1,10 @@
 import { Figtree } from "next/font/google";
 import "./globals.css";
+import { config } from "@/core/config";
 
 export const metadata = {
-  title: "Rubies MFB Support",
-  description: "AI-powered customer service for Rubies MFB",
+  title: config.brandName,
+  description: config.brandDescription,
 };
 
 const figtree = Figtree({

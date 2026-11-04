@@ -21,6 +21,10 @@ class BedrockLLM(LLMProvider):
         self.temperature = cfg.temperature
         self.max_tokens = cfg.max_tokens
         self.region = getattr(env, "AWS_REGION", "") or ""
+        self.connect_timeout = getattr(cfg, "connect_timeout_seconds", 5.0)
+        self.read_timeout = getattr(cfg, "read_timeout_seconds", 60.0)
+        self.max_attempts = getattr(cfg, "max_attempts", 3)
+        self.retry_mode = getattr(cfg, "retry_mode", "standard")
         if not self.model_id or self.model_id == "CHANGE_ME":
             raise ConfigError(
                 "llm.model_id is still CHANGE_ME: set a Bedrock model id in "
@@ -37,6 +41,16 @@ class BedrockLLM(LLMProvider):
         # Construction is lazy; no network call is made here.
         return HealthStatus(self.describe(), True, "configured")
 
+    def boto_client_config(self):
+        """Timeouts and botocore-level retries for the Bedrock endpoint."""
+        from botocore.config import Config as BotoConfig
+
+        return BotoConfig(
+            connect_timeout=self.connect_timeout,
+            read_timeout=self.read_timeout,
+            retries={"max_attempts": self.max_attempts, "mode": self.retry_mode},
+        )
+
     def get_model(self):
         if self._model is None:
             from strands.models import BedrockModel
@@ -46,6 +60,7 @@ class BedrockLLM(LLMProvider):
                 region_name=self.region,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
+                boto_client_config=self.boto_client_config(),
             )
         return self._model
 
@@ -67,6 +82,7 @@ class BedrockLLM(LLMProvider):
                 region_name=self.region,
                 temperature=self.temperature if temperature is None else temperature,
                 max_tokens=self.max_tokens if max_tokens is None else max_tokens,
+                boto_client_config=self.boto_client_config(),
             )
         agent = Agent(
             model=model,

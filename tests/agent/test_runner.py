@@ -211,6 +211,34 @@ def test_stream_path_confirm_sequence_works(tmp_path):
     assert reason == "ok"
 
 
+def test_attachment_flag_is_passed_through_and_reset_on_the_next_turn(tmp_path):
+    scripts = [[("text", "read it")], [("text", "done")]]
+    runner, runtime, _ = make_runner(tmp_path, scripts)
+
+    assert runner.handle_message("look at this", has_attachments=True) == "read it"
+    assert runtime.session.turn == 1
+    assert runtime.session.turn_has_attachments is True
+
+    assert runner.handle_message("no file now") == "done"
+    assert runtime.session.turn == 2
+    assert runtime.session.turn_has_attachments is False
+
+
+def test_stream_attachment_flag_is_passed_through_and_reset(tmp_path):
+    import asyncio
+    scripts = [[("text", "read it")], [("text", "done")]]
+    runner, runtime, _ = make_runner(tmp_path, scripts)
+
+    async def consume(text, has_attachments=False):
+        return [event async for event in runner.stream_events(
+            text, has_attachments=has_attachments)]
+
+    asyncio.run(consume("look at this", has_attachments=True))
+    assert runtime.session.turn_has_attachments is True
+    asyncio.run(consume("no file now"))
+    assert runtime.session.turn_has_attachments is False
+
+
 def test_history_is_capped_by_the_conversation_manager(tmp_path):
     scripts = [[("text", f"reply {i}")] for i in range(10)]
     runner, _, _ = make_runner(tmp_path, scripts, max_history=6)

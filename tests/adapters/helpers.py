@@ -138,14 +138,17 @@ def sse_events(body: str):
     return events
 
 
-def client_with_runners(monkeypatch, cfg, runners, clock=None):
+def client_with_runners(monkeypatch, cfg, runners, clock=None,
+                        attachments_config=None, vision_extractor=None):
     queue = list(runners)
 
     def factory(*args, **kwargs):
         return queue.pop(0)
 
     monkeypatch.setattr(web_chat, "create_agent_runner", factory)
-    return TestClient(create_app(cfg, clock=clock))
+    return TestClient(create_app(
+        cfg, clock=clock, attachments_config=attachments_config,
+        vision_extractor=vision_extractor))
 
 
 def open_chat(client):

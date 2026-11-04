@@ -20,6 +20,15 @@ def test_unknown_token_and_single_use():
     assert s.can_confirm("P1") == (False, "unknown_token")
 
 
+def test_attachment_flag_is_set_and_reset_each_turn():
+    s = SessionState()
+    assert s.turn_has_attachments is False
+    s.start_turn(has_attachments=True)
+    assert s.turn_has_attachments is True
+    s.start_turn()
+    assert s.turn_has_attachments is False
+
+
 def test_retrieval_counters_total_vs_consecutive():
     s = SessionState()
     s.record_retrieval("no_relevant_result")

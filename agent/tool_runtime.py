@@ -73,6 +73,17 @@ class ToolRuntime:
         if not ok:
             return self._error(tool_name, code, message)
 
+        if (
+            getattr(tool_cfg, "blocked_on_attachment_turns", False)
+            and getattr(self.session, "turn_has_attachments", False)
+        ):
+            return self._error(
+                tool_name,
+                "confirmation_blocked_by_attachment",
+                "Confirmation cannot be completed while the current message includes attachments. "
+                "Ask the customer to reply with their confirmation in a new message without attachments.",
+            )
+
         if getattr(tool_cfg, "requires_verified_session", False) and not self.session.verified:
             return self._error(tool_name, "not_verified", "customer is not verified")
 

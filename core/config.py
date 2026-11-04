@@ -524,6 +524,7 @@ class ToolConfig(BaseModel):
     enabled: bool
     requires_confirmation: bool
     requires_verified_session: bool
+    blocked_on_attachment_turns: bool = False
     description: str
     labels: Optional[ToolLabels] = None
     receipt: Optional[ReceiptConfig] = None

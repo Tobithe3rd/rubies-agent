@@ -43,7 +43,9 @@ def _step_payload(cfg: AppConfig, tool_name: str, step_id: str,
 
 
 def stream_response(app, cfg: AppConfig, store: ChatSessionStore,
-                    entry: dict, text: str, chat_id: str) -> StreamingResponse:
+                    entry: dict, text: str, chat_id: str,
+                    record_text: str = None,
+                    has_attachments: bool = False) -> StreamingResponse:
     web_cfg = cfg.settings.adapters.web
     runner = entry["runner"]
     lock = entry["lock"]
@@ -51,7 +53,7 @@ def stream_response(app, cfg: AppConfig, store: ChatSessionStore,
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
     panel_before = panel_view(entry, cfg, store)
-    record_user(entry, text, cfg, store)
+    record_user(entry, text if record_text is None else record_text, cfg, store)
     agent_record = start_agent(entry, cfg, store)
     running: dict[str, list[str]] = {}
 
@@ -85,7 +87,9 @@ def stream_response(app, cfg: AppConfig, store: ChatSessionStore,
         failed = False
         try:
             async def consume():
-                async for event in runner.stream_events(text):
+                events = (runner.stream_events(text, has_attachments=True)
+                          if has_attachments else runner.stream_events(text))
+                async for event in events:
                     if event.get("type") == "tool_use_stream":
                         current = event.get("current_tool_use") or {}
                         tool_id = current.get("toolUseId")

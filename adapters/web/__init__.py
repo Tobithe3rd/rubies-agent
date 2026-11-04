@@ -11,4 +11,5 @@ from .turn import _step_payload, _tool_labels, _extract_citations, stream_respon
 from .app import create_app
 from .routes_chat import create_chat, send_message, get_otp, delete_chat, health
 from .routes_stream import stream_message
+from .routes_upload import stream_message_with_files
 from .routes_session import get_session, get_history

@@ -88,16 +88,16 @@ class AgentRunner:
         if observer is not None:
             observer(tool_name, status, args, envelope)
 
-    def _setup_turn(self, text: str) -> bool:
+    def _setup_turn(self, text: str, has_attachments: bool = False) -> bool:
         # Pre-turn setup: once per non-empty message. Returns False for empty.
         if text is None or not str(text).strip():
             return False
-        self.session.start_turn()
+        self.session.start_turn(has_attachments=has_attachments)
         self.counter.reset()
         return True
 
-    def handle_message(self, text: str) -> str:
-        if not self._setup_turn(text):
+    def handle_message(self, text: str, has_attachments: bool = False) -> str:
+        if not self._setup_turn(text, has_attachments=has_attachments):
             return EMPTY_MESSAGE_REPLY
         attempts = self._attempts()
         for attempt in range(1, attempts + 1):
@@ -112,8 +112,8 @@ class AgentRunner:
                 self._log_agent_error(exc)
                 return self._error_reply(exc)
 
-    async def stream_events(self, text):
-        if not self._setup_turn(text):
+    async def stream_events(self, text, has_attachments: bool = False):
+        if not self._setup_turn(text, has_attachments=has_attachments):
             # Empty message: yield nothing (same behavior as handle_message returning empty reply)
             return
         attempts = self._attempts()

@@ -8,3 +8,4 @@ pytest
 boto3
 chromadb
 strands-agents
+python-multipart

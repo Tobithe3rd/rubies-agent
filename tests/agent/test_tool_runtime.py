@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ from agent.errors import (
     BankUnavailable,
 )
 from agent.session import SessionState
+from agent.strands_tools import build_strands_tools
 from agent.tool_logger import JsonlToolLogger
 from agent.tool_runtime import ToolRuntime
 from agent.tool_specs import TOOL_SPECS
@@ -84,6 +86,8 @@ def make_tools():
             requires_confirmation=name in {"open_dispute", "block_card"},
             requires_verified_session=name
             not in {"verify_customer", "handoff_to_human", "search_policy"},
+            blocked_on_attachment_turns=(name == "confirm_action"),
+            description=name,
         )
         for name in TOOL_SPECS
     }
@@ -222,6 +226,83 @@ class TestConfirmation:
         assert result["error"] == "bank_unavailable"
         assert "P1" in session.pending
         assert session.tool_error_count == 1
+
+    def test_confirmation_is_refused_on_an_attachment_turn(self, tmp_path):
+        runtime, session, gateway, logger = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn(has_attachments=True)
+
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["error"] == "confirmation_blocked_by_attachment"
+        assert "attachments" in result["message"]
+        assert gateway.calls == []
+        assert "P1" in session.pending
+        payload = json.loads(log_lines(logger)[-1])
+        assert payload["error"]["code"] == "confirmation_blocked_by_attachment"
+
+    def test_confirmation_is_allowed_on_the_next_attachment_free_turn(self, tmp_path):
+        runtime, session, gateway, _ = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn(has_attachments=True)
+        assert runtime.call("confirm_action", pending_token="P1")["error"] == (
+            "confirmation_blocked_by_attachment")
+        assert "P1" in session.pending
+
+        session.start_turn()
+        gateway.responses["confirm_action"] = {"status": "dispute_opened"}
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["ok"] is True
+        assert result["data"]["status"] == "dispute_opened"
+        assert session.pending == {}
+        assert gateway.calls[-1][0] == "confirm_action"
+
+    def test_proposals_and_read_only_tools_are_allowed_on_an_attachment_turn(self, tmp_path):
+        runtime, session, gateway, _ = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn(has_attachments=True)
+        gateway.responses["propose_dispute"] = {"pending_token": "P1"}
+        gateway.responses["propose_card_block"] = {"pending_token": "P2"}
+        gateway.responses["get_balance"] = {"balance_kobo": 12345}
+
+        assert runtime.call(
+            "open_dispute", reference="RUB-DB-002", reason="double debit"
+        )["ok"] is True
+        assert runtime.call("block_card", last4="0001")["ok"] is True
+        assert runtime.call("get_balance")["ok"] is True
+        assert set(session.pending) == {"P1", "P2"}
+
+    def test_attachment_guard_applies_through_the_strands_tool_adapter(self, tmp_path):
+        runtime, session, gateway, logger = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn(has_attachments=True)
+        cfg = SimpleNamespace(
+            tools=make_tools(),
+            settings=SimpleNamespace(
+                agent=SimpleNamespace(max_tool_calls_per_turn=8)),
+        )
+        tools, _ = build_strands_tools(cfg, runtime, logger)
+        confirm = next(tool for tool in tools if tool.tool_name == "confirm_action")
+        tool_use = {
+            "toolUseId": "1", "name": "confirm_action",
+            "input": {"pending_token": "P1"},
+        }
+
+        async def run():
+            return [event async for event in confirm.stream(tool_use, {})]
+
+        result = asyncio.run(run())[-1].tool_result
+        envelope = result["content"][0]["json"]
+        assert envelope["error"] == "confirmation_blocked_by_attachment"
+        assert gateway.calls == []
+        assert "P1" in session.pending
 
 
 class TestVerificationAndErrors:

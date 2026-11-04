@@ -1,0 +1,15 @@
+web_module:
+  max_file_lines: 250
+  include:
+    python:
+      - "adapters/web_chat.py"
+      - "adapters/web/**/*.py"
+      - "tests/adapters/test_web*.py"
+    web:
+      - "web/**/*"
+  exempt:
+    - "web/components/ui/**"
+    - "web/components/ai-elements/**"
+    - "web/node_modules/**"
+    - "web/.next/**"
+    - "web/next-env.d.ts"

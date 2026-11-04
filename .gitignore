@@ -23,3 +23,6 @@ web/.env.local
 
 # Keep tracked files in otherwise-empty directories
 !.gitkeep
+
+logs/servers/
+web/*.tsbuildinfo

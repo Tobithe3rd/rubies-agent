@@ -6,8 +6,10 @@
 declare -F check >/dev/null || check() { if [ "$2" = 1 ]; then echo "PASS: $1"; else echo "FAIL: $1${3:+ ($3)}"; fi; }
 declare -F skip  >/dev/null || skip()  { echo "SKIP: $1"; }
 
-# Strict: any modification or deletion fails.
+# Strict: any modification or deletion fails, except reviewed files matching the tag.
 PROT_STRICT=(agent/session.py agent/bank_client.py agent/errors.py agent/tool_runtime.py)
+STRICT_REVIEWED_TAG="attachment-confirm-guard-reviewed"
+STRICT_REVIEWED_FILES=(agent/session.py agent/tool_runtime.py)
 # Protected trees, minus planned exemptions (files with their own line-level rules are excluded here).
 PROT_TREES=(bank_api providers rag)
 SEED_REVIEWED_TAG="seed-fix-reviewed"   # reviewed seed fix; seed.py must match this tag exactly
@@ -28,7 +30,16 @@ protected_check() {
     return 0
   fi
 
-  out=$(git diff --name-only --diff-filter=MD "$base" -- "${PROT_STRICT[@]}" | tr '\n' ' ')
+  out=""
+  for f in "${PROT_STRICT[@]}"; do
+    if [ -z "$(git diff --name-only --diff-filter=MD "$base" -- "$f")" ]; then continue; fi
+    if [[ " ${STRICT_REVIEWED_FILES[*]} " == *" $f "* ]] \
+      && git rev-parse -q --verify "$STRICT_REVIEWED_TAG" >/dev/null 2>&1 \
+      && git diff --quiet "$STRICT_REVIEWED_TAG" -- "$f"; then
+      continue
+    fi
+    out="$out$f "
+  done
   if [ -n "$out" ]; then problems="$problems [strict] $out"; fi
 
   out=$(git diff --name-only "$base" -- "${PROT_TREES[@]}" "${PROT_EXEMPT[@]}" | tr '\n' ' ')

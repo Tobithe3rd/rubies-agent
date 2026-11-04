@@ -114,3 +114,23 @@ def test_tool_result_carries_the_runtime_envelope():
     assert result["status"] == "success"
     assert result["content"][0]["json"] == {"ok": True, "tool": "confirm_action", "data": {"ok": True}}
     assert runtime.calls == [("confirm_action", {"pending_token": "PT"})]
+
+
+def test_observer_exception_is_logged_and_result_unchanged():
+    cfg = make_cfg(["block_card"])
+    runtime = FakeRuntime()
+    seen = []
+
+    def boom(tool_name, status, is_proposal):
+        seen.append((tool_name, status, is_proposal))
+        raise RuntimeError("observer boom")
+
+    (tool,), _ = build_strands_tools(cfg, runtime, runtime.logger, observer=boom)
+    events = run_tool(tool, last4="0001")
+
+    assert result_of(events)["content"][0]["json"] == {
+        "ok": True, "tool": "block_card", "data": {"ok": True}
+    }
+    assert seen == [("block_card", "success", False)]
+    assert runtime.logger.lines[-1]["tool"] == "tool_observer_error"
+    assert runtime.logger.lines[-1]["error"]["message"] == "observer boom"

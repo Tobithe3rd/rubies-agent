@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from string import Formatter
 from typing import Any, Optional
@@ -23,6 +24,11 @@ class LLMConfig(BaseModel):
     model_id: str
     temperature: float = Field(ge=0.0, le=1.0)
     max_tokens: int = Field(ge=1)
+    # Transport resilience for the Bedrock endpoint (wifi blips, sleep/wake).
+    connect_timeout_seconds: float = Field(default=5.0, ge=1, le=60)
+    read_timeout_seconds: float = Field(default=60.0, ge=5, le=300)
+    max_attempts: int = Field(default=3, ge=1, le=10)
+    retry_mode: str = "standard"
 
     @field_validator("provider")
     @classmethod
@@ -312,6 +318,12 @@ class AgentConfig(BaseModel):
     bank_api_timeout_seconds: int = Field(ge=1)
     max_tool_calls_per_turn: int = Field(ge=1)
     fallback_message: str
+    # Retries for connection/timeout failures from the model endpoint.
+    model_retries: int = Field(default=2, ge=0, le=5)
+    retry_backoff_seconds: float = Field(default=1.0, ge=0, le=30)
+    network_error_message: str = (
+        "I can't reach our systems right now. Please try again in a moment."
+    )
 
     @field_validator("system_prompt_path", "pidgin_examples_path")
     @classmethod
@@ -360,6 +372,7 @@ class BankAPIConfig(BaseModel):
     otp_max_attempts: int = Field(ge=1, le=10)
     otp_delivery: str = "mock"
     otp_log_path: str
+    phone_pattern: str = r"^\+234[789]\d{9}$"
     pending_action_ttl_seconds: int = Field(ge=60)
     mini_statement_max_n: int = Field(ge=1)
     mini_statement_default_n: int = Field(ge=1)
@@ -379,6 +392,17 @@ class BankAPIConfig(BaseModel):
     def only_http_supported(cls, v: str) -> str:
         if v != "http":
             raise ValueError("only 'http' is supported for bank_api.gateway at this stage")
+        return v
+
+    @field_validator("phone_pattern")
+    @classmethod
+    def phone_pattern_is_valid_regex(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("bank_api.phone_pattern must not be empty")
+        try:
+            re.compile(v)
+        except re.error as exc:
+            raise ValueError(f"bank_api.phone_pattern is not a valid regex: {exc}") from exc
         return v
 
     @field_validator("mini_statement_default_n")

@@ -24,7 +24,8 @@ class FakeRuntime:
         return {"ok": True, "tool": name, "data": {}}
 
 
-def make_cfg(tmp_path, prompt="SYSTEM PROMPT", max_history=40, max_tools=8, fallback="FALLBACK"):
+def make_cfg(tmp_path, prompt="SYSTEM PROMPT", max_history=40, max_tools=8, fallback="FALLBACK",
+             model_retries=0, retry_backoff=0.0, network_message="NETWORK DOWN"):
     prompt_path = tmp_path / "prompt.md"
     prompt_path.write_text(prompt, encoding="utf-8")
     return SimpleNamespace(
@@ -35,6 +36,9 @@ def make_cfg(tmp_path, prompt="SYSTEM PROMPT", max_history=40, max_tools=8, fall
                 max_history_messages=max_history,
                 max_tool_calls_per_turn=max_tools,
                 fallback_message=fallback,
+                model_retries=model_retries,
+                retry_backoff_seconds=retry_backoff,
+                network_error_message=network_message,
             )
         ),
         tools={},
@@ -90,6 +94,73 @@ def test_model_error_message_does_not_leak_the_session_token(tmp_path):
     assert reply == "FALLBACK"
     logged = str(runtime.logger.lines[-1])
     assert "SUPER-SECRET-TOKEN" not in logged
+
+
+class EndpointConnectionError(Exception):
+    """Same class name botocore uses, to exercise the retry classification."""
+
+
+class FlakyLLM(ScriptedLLM):
+    def __init__(self, fail_times, error=EndpointConnectionError, **kwargs):
+        super().__init__(**kwargs)
+        self.fail_times = fail_times
+        self.error = error
+        self.stream_calls = 0
+
+    async def stream(self, *args, **kwargs):
+        self.stream_calls += 1
+        if self.stream_calls <= self.fail_times:
+            raise self.error("Could not connect to the endpoint URL")
+        async for event in super().stream(*args, **kwargs):
+            yield event
+
+
+def test_connection_error_is_retried_and_the_turn_succeeds(tmp_path):
+    cfg = make_cfg(tmp_path, model_retries=2)
+    runtime = FakeRuntime()
+    model = FlakyLLM(1, scripts=[[("text", "hello")]])
+    runner = AgentRunner(cfg, runtime, model)
+
+    assert runner.handle_message("hi") == "hello"
+    assert model.stream_calls == 2
+    assert [line["tool"] for line in runtime.logger.lines] == ["agent_retry"]
+
+
+def test_connection_error_retries_exhausted_returns_network_message(tmp_path):
+    cfg = make_cfg(tmp_path, model_retries=1)
+    runtime = FakeRuntime()
+    model = FlakyLLM(5, scripts=[[("text", "hello")]])
+    runner = AgentRunner(cfg, runtime, model)
+
+    assert runner.handle_message("hi") == "NETWORK DOWN"
+    assert model.stream_calls == 2
+    assert runtime.logger.lines[-1]["tool"] == "agent_error"
+
+
+def test_non_connection_error_is_not_retried(tmp_path):
+    cfg = make_cfg(tmp_path, model_retries=2)
+    runtime = FakeRuntime()
+    model = FlakyLLM(5, error=ValueError, scripts=[[("text", "hello")]])
+    runner = AgentRunner(cfg, runtime, model)
+
+    assert runner.handle_message("hi") == "FALLBACK"
+    assert model.stream_calls == 1
+
+
+def test_stream_retry_only_before_output_is_sent(tmp_path):
+    import asyncio
+
+    cfg = make_cfg(tmp_path, model_retries=2)
+    runtime = FakeRuntime()
+    model = FlakyLLM(1, scripts=[[("text", "hello")]])
+    runner = AgentRunner(cfg, runtime, model)
+
+    async def collect():
+        return [event async for event in runner.stream_events("hi")]
+
+    events = asyncio.run(collect())
+    assert model.stream_calls == 2
+    assert any("hello" in str(event.get("data", "")) for event in events)
 
 
 def test_prompt_is_passed_to_the_agent_unchanged(tmp_path):

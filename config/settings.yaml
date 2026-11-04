@@ -6,6 +6,12 @@ llm:
   model_id: "us.anthropic.claude-sonnet-4-6"
   temperature: 0.2
   max_tokens: 1024
+  # Transport resilience: fast connect fail + botocore-level retries with backoff
+  # at the HTTP layer (before the agent-level retry in agent/runner.py).
+  connect_timeout_seconds: 5
+  read_timeout_seconds: 60
+  max_attempts: 3
+  retry_mode: standard   # standard | adaptive | legacy
 
 embeddings:
   provider: titan
@@ -113,6 +119,11 @@ agent:
   bank_api_timeout_seconds: 10
   max_tool_calls_per_turn: 8
   fallback_message: "Sorry, something went wrong on my side. Please try again, or ask for a human agent and I will pass you over."
+  # Connection/timeout failures from the model endpoint: retry this many extra
+  # times (only when nothing has been streamed yet), then use the network message.
+  model_retries: 2
+  retry_backoff_seconds: 1.0
+  network_error_message: "I can't reach our systems right now. Please try again in a moment."
 
 seed:
   random_seed: 42
@@ -131,6 +142,7 @@ bank_api:
   otp_max_attempts: 3
   otp_delivery: mock
   otp_log_path: logs/otp.log
+  phone_pattern: '^\+234[789]\d{9}$'
   pending_action_ttl_seconds: 300
   mini_statement_max_n: 50
   mini_statement_default_n: 10

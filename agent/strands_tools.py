@@ -48,6 +48,8 @@ class StrandsRuntimeTool(AgentTool):
         logger,
         counter: ToolCallCounter,
         query_rewriter=None,
+        observer=None,
+        result_observer=None,
     ):
         super().__init__()
         self._name = name
@@ -56,6 +58,8 @@ class StrandsRuntimeTool(AgentTool):
         self._logger = logger
         self._counter = counter
         self._query_rewriter = query_rewriter
+        self._observer = observer
+        self._result_observer = result_observer
 
     @property
     def tool_name(self) -> str:
@@ -92,6 +96,8 @@ class StrandsRuntimeTool(AgentTool):
             envelope = await asyncio.to_thread(self._runtime.call, self._name, **args)
 
         status = "success" if envelope.get("ok") else "error"
+        self._notify(status, envelope)
+        self._notify_result(status, args, envelope)
         yield ToolResultEvent(
             {
                 "toolUseId": tool_use_id,
@@ -99,6 +105,47 @@ class StrandsRuntimeTool(AgentTool):
                 "content": [{"json": envelope}],
             }
         )
+
+    def _notify(self, status: str, envelope: dict) -> None:
+        """Optional per-runner observer. Inputs and results are never passed."""
+        if self._observer is None:
+            return
+        # A real proposal is the only successful result carrying a pending token.
+        data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
+        is_proposal = status == "success" and bool(data.get("pending_token"))
+        try:
+            self._observer(self._name, status, is_proposal)
+        except Exception as exc:
+            try:
+                self._logger.log(
+                    session_id=getattr(self._runtime.session, "session_id", ""),
+                    tool="tool_observer_error",
+                    inputs={"tool": self._name},
+                    ok=False,
+                    error={"code": type(exc).__name__, "message": str(exc)},
+                    duration_ms=0,
+                )
+            except Exception:
+                pass
+
+    def _notify_result(self, status: str, args: dict, envelope: dict) -> None:
+        """Server-side result hook. Raw values never leave this process."""
+        if self._result_observer is None:
+            return
+        try:
+            self._result_observer(self._name, status, args, envelope)
+        except Exception as exc:
+            try:
+                self._logger.log(
+                    session_id=getattr(self._runtime.session, "session_id", ""),
+                    tool="tool_result_observer_error",
+                    inputs={"tool": self._name},
+                    ok=False,
+                    error={"code": type(exc).__name__, "message": str(exc)},
+                    duration_ms=0,
+                )
+            except Exception:
+                pass
 
     def _rewrite_query(self, args: dict) -> dict:
         """Rewrite the search query before retrieval; never break retrieval."""
@@ -143,6 +190,8 @@ def build_strands_tools(
     logger=None,
     counter: ToolCallCounter | None = None,
     query_rewriter=None,
+    observer=None,
+    result_observer=None,
 ):
     """Build AgentTool instances for enabled tools; return (tools, counter)."""
     logger = logger or runtime.logger
@@ -157,7 +206,14 @@ def build_strands_tools(
             continue
         tools.append(
             StrandsRuntimeTool(
-                name, tool_cfg.description, runtime, logger, counter, query_rewriter
+                name,
+                tool_cfg.description,
+                runtime,
+                logger,
+                counter,
+                query_rewriter,
+                observer=observer,
+                result_observer=result_observer,
             )
         )
     return tools, counter

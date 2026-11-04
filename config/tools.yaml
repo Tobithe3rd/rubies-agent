@@ -2,64 +2,121 @@ verify_customer:
   enabled: true
   requires_confirmation: false
   requires_verified_session: false
-  description: "Verify the customer with their phone number and the one-time passcode already sent to that number."
+  description: "Verify the customer with their phone number and the one-time passcode. Calling it with only a phone number requests a code but does not confirm the number is registered: the result is identical for registered and unregistered numbers. Never tell the customer a code was sent as a fact; say it is on its way only if the number is registered, and never say whether it is registered. If the result mentions invalid_phone_format, ask the customer to re-enter the number with an example such as +2348031234567 or 08031234567, and do not call the tool again with the same value. If a code does not match or has expired, say so and offer to resend or hand over."
+  labels:
+    running: "Verifying your identity…"
+    done: "Verified your identity"
+    failed: "I couldn’t complete the verification"
 
 get_balance:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
   description: "Return the verified customer's current account balance."
+  labels:
+    running: "Checking your balance…"
+    done: "Checked your balance"
+    failed: "I couldn’t check your balance"
 
 get_mini_statement:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
   description: "Return the verified customer's most recent transactions (date, amount, direction, reference, status). Use it to find a transaction the customer describes; do not ask how many, use the default. Only pass limit if the customer asks for a specific number."
+  labels:
+    running: "Getting your recent transactions…"
+    done: "Got your recent transactions"
+    failed: "I couldn’t get your recent transactions"
 
 get_transaction_status:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
   description: "Look up one transaction by the reference the customer gives and report its status and failure reason."
+  labels:
+    running: "Checking the status of your transfer…"
+    done: "Checked the status of your transfer"
+    failed: "I couldn’t check the status of your transfer"
 
 open_dispute:
   enabled: true
   requires_confirmation: true
   requires_verified_session: true
   description: "Propose a dispute for a transaction. This only proposes; the customer must confirm in their next message before anything changes."
+  labels:
+    running: "Preparing your dispute…"
+    done: "Prepared your dispute"
+    failed: "I couldn’t prepare your dispute"
+    awaiting: "Ready to open your dispute. Waiting for you to confirm."
+    no_action: "Checked your dispute request"
+  receipt:
+    kind: dispute
+    template: "Dispute opened for {reference}."
 
 block_card:
   enabled: true
   requires_confirmation: true
   requires_verified_session: true
   description: "Propose blocking a card by its last four digits. This only proposes; the customer must confirm in their next message before anything changes."
+  labels:
+    running: "Preparing to block your card…"
+    done: "Prepared to block your card"
+    failed: "I couldn’t prepare to block your card"
+    awaiting: "Ready to block your card. Waiting for you to confirm."
+    no_action: "Checked your card"
+  receipt:
+    kind: card_block
+    template: "Card ending {last4} blocked."
 
 check_loan_eligibility:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
   description: "Check whether the customer qualifies for a loan of the naira amount they asked for, and explain which requirements passed or failed."
+  labels:
+    running: "Checking your loan eligibility…"
+    done: "Checked your loan eligibility"
+    failed: "I couldn’t check your loan eligibility"
 
 get_loan_status:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
   description: "Return the verified customer's active loan status and next repayment."
+  labels:
+    running: "Checking your loan…"
+    done: "Checked your loan"
+    failed: "I couldn’t check your loan"
 
 handoff_to_human:
   enabled: true
   requires_confirmation: false
   requires_verified_session: false
   description: "Hand the conversation to a human agent with a short summary and a reason code."
+  labels:
+    running: "Passing you to a human agent…"
+    done: "Passed you to a human agent"
+    failed: "I couldn’t reach a human agent"
+  receipt:
+    kind: handoff
+    template: "Passed to a human agent: {summary}"
 
 search_policy:
   enabled: true
   requires_confirmation: false
   requires_verified_session: false
   description: "Search the Rubies policy documents and answer with the document and section. Answer only from the text that is returned."
+  labels:
+    running: "Reading our policies…"
+    done: "Read our policies"
+    failed: "I couldn’t read our policies"
 
 confirm_action:
   enabled: true
   requires_confirmation: false
   requires_verified_session: true
   description: "Execute the dispute or card block that the customer confirmed in their latest message."
+  labels:
+    running: "Completing your request…"
+    done: "Completed your request"
+    failed: "I couldn’t complete your request"

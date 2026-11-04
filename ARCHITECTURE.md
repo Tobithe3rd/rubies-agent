@@ -49,20 +49,27 @@ Customer -> chat adapter (Fleet-facing) -> Strands agent on Bedrock -> tool wrap
 Swappable behind interfaces: LLM provider, embedder, vector store, data store, interface adapter.
 Debugging: `debug: true` gives verbose logs; startup prints which implementation each part loaded; config is validated at startup and fails fast with a clear message.
 
-## 5. Repo layout
+## 5. Repo layout (reorganised after Chat 5 Step 3; Phase 3 code moves deferred)
 ```
 rubies-agent/
-├── .env.example
-├── config/        settings.yaml, tools.yaml
-├── prompts/       *.md
-├── core/          config loader, interfaces, factories
-├── providers/     llm/, embeddings/, vectorstore/
-├── bank_api/      main.py, models.py, seed.py
-├── agent/         agent, tool wrapper, confirmation, handoff
-├── rag/           docs/, ingest
-├── adapters/      http_chat.py (Fleet adapter goes here)
-├── data/  eval/  logs/
+├── README.md  ARCHITECTURE.md  requirements.txt  .env.example  .gitignore
+├── config/        settings.yaml, tools.yaml        (all swapping and tuning)
+├── prompts/       system_prompt.md, query_rewrite.md (+ pidgin_examples.md, handoff_summary.md planned)
+├── core/          config, interfaces, factories, clock, startup, app.py (to move to adapters/ later)
+├── providers/     datastore/, embeddings/, llm/, otp/, vectorstore/
+├── bank_api/      main.py, auth.py, service.py, seed.py
+├── agent/         runner, session, errors, prompts, bank_client, tool_specs, tool_runtime, strands_tools, tool_logger
+├── rag/           docs/, facts.yaml, sources.md, ingest, chunker, search, query_rewrite
+│                  (dev tools to move to eval/ later: calibrate, analyze_dev_set, threshold_report)
+├── adapters/      cli_chat.py (Fleet adapter goes here)
+├── eval/          datasets/ (rag_dev_set, pidgin_tuning_set), reports/ (calibration, threshold reports)
+├── scripts/checks/   acceptance and regression check scripts
+├── tests/         mirrors the code: agent/ bank_api/ rag/ core/ providers/ adapters/
+├── data/          runtime/ (bank.db, chroma/: gitignored), generated/ (rag_chunks.jsonl, seed_manifest.md)
+├── logs/          tool_calls.jsonl, otp.log
+└── docs/brief/    capstone brief PDF
 ```
+Where to look: agent behaviour in `agent/`, swappable parts in `providers/`, config in `config/`, policy documents in `rag/docs/`, anything measured in `eval/`, anything generated or stored in `data/`.
 
 ## 6. Tools
 | Tool | Confirmation |
@@ -127,6 +134,19 @@ Demo scenarios: (1) fee question with citation; (2) double debit -> verify, disp
   - Known limits: code proves a new user message arrived before confirm_action, not that it said yes (the prompt covers that; consider a code-side yes check). No tool lists a customer's cards, so the customer must give the last 4 digits (bank API change if wanted). Policy answers on in-domain unanswerable questions still depend on the prompt rule (Chat 3 note). The live scenarios are wording-sensitive in two places (scenario 1 citation and naira figure, scenario 2 "25,000"); the real model is non-deterministic, so re-run twice after any prompt change.
   - Chat 7: eval must match customers by name, phone, reference and amount only (tiers and dates shift per run; dispute ids do not reset). pytest regenerates data/seed_manifest.md, so discard it before commits.
   - Chat 6: Fleet adapter goes beside adapters/cli_chat.py via the existing adapter factory; Fleet still OPEN.
-- Chat 5: not started
+- Chat 5 steps 1-4 (28 Oct to 2 Nov 2026):
+- Step 1 design decisions: query rewriting = a separate small LLM call inside the search_policy path (option A; falls back to the original query on any failure). Handoff enforcement = hybrid (see NEXT STEP).
+- Step 2 DONE: QueryRewriter interface + RewriteResult (core/interfaces.py); rag/query_rewrite.py (LLM and passthrough); prompts/query_rewrite.md; rag.query_rewrite config block (timeout_seconds 45, log_text false); rewrite happens in agent/strands_tools.py before search; one JSONL "query_rewrite" event per rewrite, no query text at info level.
+- Step 3 DONE: eval/datasets/pidgin_tuning_set.yaml (14 in-scope, 3 off-topic, 2 unanswerable_in_domain; a TUNING set, not the Chat 7 held-out eval); rag/threshold_report.py extended (--queries, --rewrite on|off, --output, config-driven sweep via rag.threshold_report). Threshold 0.35 and top_k 4 unchanged.
+- Step 4 DONE and verified: prompts/pidgin_examples.md (examples show the tool step before any claim; square-bracket lines are never printed), prompts/system_prompt.md (appended sections: Register, Answering policy questions, No-guessing reminder, "Never claim an action you did not perform"), prompts/query_rewrite.md tightened (never swap or generalise product words), config agent.pidgin_examples_path, agent/prompts.py appends the examples. Commit 6792247.
+  Verification: scripts/checks/live_step4.sh/.py (Pidgin P1-P5, no-guessing N1-N3) 8/8 twice; scripts/checks/live_retrieval_gates.sh/.py 12/0 twice; Chat 4 live acceptance (scripts/checks/check_chat4_step5.sh with LIVE=1) 14/0 twice with the new prompts; pytest 265 passing.
+  Retrieval (rewrite on): Pidgin set 0/14 refused, 0/3 off-topic answered, recall@4 13/14, lowest in-scope top-1 0.4233 (margin 0.0733 over 0.35); plain-English dev set 0/20 refused, 0/3 off-topic answered (the mortgage regression from Step 3 is gone), recall 19/20, lowest 0.4654. KNOWN LIMIT unchanged: in-domain unanswerable questions (bitcoin 0.5415, owner 0.5226, both vs RUB-DOC-08#1) cannot be refused by the threshold; the prompt rule handles them (N1 and N2 pass).
+Repairs made along the way (all committed except where noted):
+- The layout refactor (tags layout-phase2) broke the old check scripts. Fixed with shared libs scripts/checks/lib_manifest.sh (manifest_check: tolerates dates, KYC tiers, monthly inflow, sequential reference numbers RUB-NN-NNNNNN and the Transactions count; strict on names, phones, scenario amounts, last4, fixed refs like RUB-DB-001, other counts; handles the manifest path at chat3-done data/seed_manifest.md vs data/generated/seed_manifest.md) and scripts/checks/lib_protected.sh (protected_check; agent/session.py, agent/bank_client.py, agent/errors.py, agent/tool_runtime.py strictly unchanged; bank_api/seed.py allowed if manifest-path-only OR byte-identical to tag seed-fix-reviewed). Self-tests: test_lib_manifest.sh (24 cases), test_lib_protected.sh (15 cases). check_chat4_step4/5 and check_chat5_step2/3 call them.
+- Seed bug fixed (bank_api/seed.py): on the 1st to 4th of a month the "5th of each of the last 3 months" salary loop skipped the current month, giving 2 credits instead of 3 (inflow, transaction count and reference numbers shifted; it would also have changed the demo's loan eligibility). Fix: start from the previous month if this month's 5th has not happened. main(today=None, manifest_path=None); seed tests now write a temp manifest; new regression test. Tag seed-fix-reviewed.
+- Tags: chat3-done, chat4-done, layout-phase2, seed-fix-reviewed.
+Config already present and unused: handoff.max_failed_retrievals 2, handoff.max_failed_verifications 3 (validated). SessionState counts failed_retrievals, consecutive_failed_retrievals, tool_error_count, failed_verifications. Tool handoff_to_human and POST /handoff already exist (work with or without a session; handoff_tickets table has a reason column). prompts/handoff_summary.md does not exist yet. Verify whether handoff.handoff_summary_max_chars exists before building.
+
+- Layout refactor (29-30 Oct 2026): Phases 1-2 done (data/eval/scripts/docs moved, tests mirrored). Scripts now run as scripts/checks/<name>.sh. Phase 3 (moving agent/rag/core code, import rewrites) deferred until after the first demo.
 - Chat 6: not started
 - Chat 7: not started

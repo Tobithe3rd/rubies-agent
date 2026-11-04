@@ -32,18 +32,22 @@ Customer -> chat adapter (Fleet-facing) -> Strands agent on Bedrock -> tool wrap
 | Pidgin | System prompt rules + few-shot examples; reply in the user's register; rewrite query to plain English before retrieval |
 | Handoff | Code triggers (user asks for human/manager, 2 failed retrievals, repeated tool errors, 3 failed verifications) + model judgement for upset users. Calls `handoff_to_human` with summary |
 | Logging | Tool wrapper writes JSONL (time, session, tool, inputs, result/error) + audit table in the bank API |
+| Web interface | HTTP web adapter beside the CLI (same agent), not a second agent. The web UI is not a capstone deliverable |
+| Web session | One in-memory AgentRunner + transcript per chat; 15-minute idle limit; browser keeps only the chat id in `sessionStorage`; nothing on disk |
 | Fleet | OPEN: confirm how Fleet registers agents. Keep behind an adapter interface |
 
 ## 4. Modularity rules
 1. Every choice and number lives in config, never in logic.
 2. Every swappable part sits behind a small interface; config picks the implementation via a factory.
 3. Prompts and few-shot examples are plain files.
+4. Web module files (web/, adapters/web*, their tests) stay at or under 250 non-blank, non-comment lines (config/quality.yaml). Enforced by scripts/checks/check_web_file_size.py and ESLint max-lines. Generated code (web/components/ui, web/components/ai-elements) is exempt.
 
 | File | Controls |
 |---|---|
 | `.env` | Secrets/environment only: AWS region and credentials, bank API URL |
 | `config/settings.yaml` | Model ID, embedding model, vector store type/path, chunking mode, similarity threshold, top-k, session expiry, handoff limits, log path, adapter, `debug` flag |
 | `config/tools.yaml` | Per tool: enabled, `requires_confirmation`, `requires_verified_session`, description |
+| `config/quality.yaml` | Web module file-size limit, included globs and generated-code exemptions |
 | `prompts/` | `system_prompt.md`, `pidgin_examples.md`, `handoff_summary.md`, `query_rewrite.md` |
 
 Swappable behind interfaces: LLM provider, embedder, vector store, data store, interface adapter.
@@ -53,7 +57,7 @@ Debugging: `debug: true` gives verbose logs; startup prints which implementation
 ```
 rubies-agent/
 ├── README.md  ARCHITECTURE.md  requirements.txt  .env.example  .gitignore
-├── config/        settings.yaml, tools.yaml        (all swapping and tuning)
+├── config/        settings.yaml, tools.yaml, quality.yaml   (all swapping and tuning)
 ├── prompts/       system_prompt.md, query_rewrite.md (+ pidgin_examples.md, handoff_summary.md planned)
 ├── core/          config, interfaces, factories, clock, startup, app.py (to move to adapters/ later)
 ├── providers/     datastore/, embeddings/, llm/, otp/, vectorstore/
@@ -61,9 +65,11 @@ rubies-agent/
 ├── agent/         runner, session, errors, prompts, bank_client, tool_specs, tool_runtime, strands_tools, tool_logger
 ├── rag/           docs/, facts.yaml, sources.md, ingest, chunker, search, query_rewrite
 │                  (dev tools to move to eval/ later: calibrate, analyze_dev_set, threshold_report)
-├── adapters/      cli_chat.py (Fleet adapter goes here)
+├── adapters/      cli_chat.py, web/ (package), web_chat.py (thin shim; Fleet adapter goes here)
+├── web/           Next.js frontend: app/, core/, features/, components/ui, components/ai-elements
+├── contract/      event and history fixtures shared by backend and frontend tests
 ├── eval/          datasets/ (rag_dev_set, pidgin_tuning_set), reports/ (calibration, threshold reports)
-├── scripts/checks/   acceptance and regression check scripts
+├── scripts/       servers.sh; checks/ (acceptance and regression check scripts)
 ├── tests/         mirrors the code: agent/ bank_api/ rag/ core/ providers/ adapters/
 ├── data/          runtime/ (bank.db, chroma/: gitignored), generated/ (rag_chunks.jsonl, seed_manifest.md)
 ├── logs/          tool_calls.jsonl, otp.log
@@ -96,7 +102,7 @@ Synthetic data only (naira, Nigerian names/phone formats). At least 5 Pidgin tes
 | 3. Documents and RAG | The 6-8 policy docs, chunking, Titan, ChromaDB, citations, threshold |
 | 4. Agent core | Strands agent, tool wrapper, session injection, two-step confirmation |
 | 5. Behaviour | Pidgin prompts, handoff triggers, logging |
-| 6. Fleet | Registration and adapter |
+| 6. Web interface (done) and Fleet registration (open) | HTTP web adapter and Next.js frontend; Fleet registration is blocked until access is granted |
 | 7. Eval and demo | 20-30 RAG questions, 10 tool scenarios, 5 safety cases, 7 demo scenarios, README |
 
 Demo scenarios: (1) fee question with citation; (2) double debit -> verify, dispute after confirmation; (3) lost card -> verify, confirm, block; (4) N200,000 loan -> requirements + eligibility tool; (5) Pidgin "money no gree enter" -> ask reference, check status; (6) attack on neighbour's balance -> refuse, no tool call; (7) angry customer wants manager -> handoff with summary.
@@ -148,5 +154,16 @@ Repairs made along the way (all committed except where noted):
 Config already present and unused: handoff.max_failed_retrievals 2, handoff.max_failed_verifications 3 (validated). SessionState counts failed_retrievals, consecutive_failed_retrievals, tool_error_count, failed_verifications. Tool handoff_to_human and POST /handoff already exist (work with or without a session; handoff_tickets table has a reason column). prompts/handoff_summary.md does not exist yet. Verify whether handoff.handoff_summary_max_chars exists before building.
 
 - Layout refactor (29-30 Oct 2026): Phases 1-2 done (data/eval/scripts/docs moved, tests mirrored). Scripts now run as scripts/checks/<name>.sh. Phase 3 (moving agent/rag/core code, import rewrites) deferred until after the first demo.
-- Chat 6: not started
+- Chat 6a: Web interface (3 to 4 Nov 2026).
+  Built: web adapter package `adapters/web/` (`adapters/web_chat.py` is a thin shim; run with `python -m uvicorn adapters.web_chat:create_app --factory --port 8002`). Routes: `POST /chats`; `POST /chats/{id}/messages` (JSON); `POST /chats/{id}/messages/stream` (SSE events step, text, panel, done, error); `GET /chats/{id}/session`; `GET /chats/{id}/history`; `GET /chats/{id}/dev-otp` (config-gated; committed config has `allow_dev_otp: false`); `DELETE /chats/{id}`; `GET /health`. `chat_id` comes only from `secrets.token_urlsafe(32)`.
+  Session model: one AgentRunner and SessionState per chat, in memory; idle limit 900 s, max age 3600 s, verification expiry clears the chat (`clear_transcript_on_verification_expiry`); transcript kept in memory only, never on disk or in logs; browser stores only the chat id in `sessionStorage` (`web/core/storage/chat-id-store.ts`). Chats do not survive a server restart.
+  Customer-facing tool steps: plain-English labels per tool in `config/tools.yaml` (running, done, failed, awaiting, no_action). Adapter-built stream events carry only labels, citations and allow-listed receipt fields; history redacts tokens, OTPs and phone numbers. Live model text deltas are streamed as-is and scrubbed only when history is read. Panel receipts (dispute reference, card block last4, handoff ticket) are built from an allow-list of result fields.
+  Hooks added in `agent/` (protected files untouched): `AgentRunner._setup_turn` and `stream_events`; tool observer and result observer in `agent/strands_tools.py` wired in `agent/runner.py`. `cli_chat.py` now streams through `AgentRunner.stream_events` (historical note: the CLI streaming path used to skip `start_turn`, so `confirm_action` was always refused as same-turn — unverified, historical).
+  Also changed: bank API validates and normalises Nigerian phone numbers (`bank_api.phone_pattern`; 422 `invalid_phone_format`); unknown but well-formed numbers get the same response as known ones (anti-enumeration), and the agent says a code is sent only if the number is registered; prompts and Pidgin examples updated. Bedrock connect/read timeouts and retries are configured under `llm` in `settings.yaml`.
+  Frontend: `web/` is Next.js 16 with shadcn/ui and AI Elements components copied as source (the AI Elements CLI is deprecated from end of Nov 2026 per `web/README`; unverified externally; the components are unaffected). Structure: `core/` (contract, transport interface with http and mock implementations, config, pure reducer, storage), `features/chat`, `features/panel`, `app/` (composition). Boundaries enforced by ESLint; feature folders cannot import each other. `NEXT_PUBLIC_TRANSPORT=mock` runs the UI with no backend. The event and history contract is defined once (`web/core/contract.ts`) and checked against `contract/` fixtures by a Vitest test and `tests/adapters/test_web_contract_fixtures.py`.
+  Deviations: did not fork `vercel/ai-chatbot` (too heavy: auth, database, blob storage; flagged to and approved by the builder — unverified from the repo); Magic UI used for at most three subtle accents (unverified — no trace found in the repo); `DESIGN.md` and `PRODUCT.md` were not created by `/impeccable init` (both absent).
+  Tests: pytest 387 passing; Vitest 24 passing; ESLint and the size check pass.
+  Open: Fleet registration (Chat 6b); full live card, dispute and handoff walk-through through the refactored frontend to be confirmed; re-run the wording-sensitive live acceptance twice (`scripts/checks/check_chat4_step5.sh` with `LIVE=1`) after the phone-validation prompt change.
+  Notes for later: the web adapter is the natural base for the Fleet adapter if Fleet needs an HTTP endpoint; the chat 7 evaluation set must not depend on dates or tiers (see the earlier note).
+- Chat 6b: Fleet: not started (blocked on access)
 - Chat 7: not started

@@ -71,7 +71,7 @@ function parseReceipt(value: unknown): SessionReceipt | null {
   };
 }
 
-function parsePanel(value: unknown): SessionPanel | null {
+export function parsePanel(value: unknown): SessionPanel | null {
   if (!value || typeof value !== "object") return null;
   const panel = value as Record<string, unknown>;
   if (

@@ -56,7 +56,7 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
-function useCountdown(receivedAt: number | null, seconds: number | null) {
+export function useCountdown(receivedAt: number | null, seconds: number | null) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -329,7 +329,7 @@ export function SessionPanel({
               End chat and clear
             </button>
             <p className="mt-2 text-[12px] text-[var(--muted)]">
-              Nothing from this chat is saved.
+              Messages and account details are not saved.
             </p>
           </Section>
 
@@ -442,8 +442,8 @@ export function SessionPanel({
 
           <Section title="Stay safe" className="border-b-0">
             <p className="text-[13px] leading-snug text-[var(--muted)]">
-              This chat isn&rsquo;t saved. Ending it or closing the page clears
-              everything.
+              Only a temporary chat ID is kept in this tab. Ending the chat
+              clears it. Messages and account details are not saved.
             </p>
             <p className="mt-2 text-[13px] leading-snug text-[var(--muted)]">
               Rubies will never ask for your PIN, password or full card number.

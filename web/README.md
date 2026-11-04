@@ -45,6 +45,24 @@ pnpm lint
 pnpm build
 ```
 
+## Storage
+
+The browser stores exactly one thing: the current chat ID, in
+`sessionStorage` under the key `rubies.chatId`. All access goes through
+`lib/chat-id-store.ts` and is wrapped in `try/catch` because storage can be
+blocked.
+
+- Never stored in the browser: messages, text, phone numbers, panel data,
+  tokens or anything else.
+- No `localStorage`, cookies or IndexedDB.
+- On load the stored ID is used to restore the chat from
+  `GET /chats/{id}/history`. If the chat has expired (404 `chat_expired`), the
+  stored ID is cleared, a new chat is created and the notice "Your session
+  ended. Started a new chat." is shown. On a network error the stored ID is
+  kept and the UI offers Retry instead of creating a new chat.
+- "New chat" and "End chat and clear" delete the server chat, clear the stored
+  ID and create a new one.
+
 ## Design notes
 
 - No AI Elements CLI used (deprecated; moving to shadcn/ui at end of Nov 2026).

@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useCallback, useSyncExternalStore } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { ArrowUp, FileText, PanelRight, RotateCcw } from "lucide-react";
+import type { StickToBottomContext } from "use-stick-to-bottom";
 import {
   Conversation,
   ConversationContent,
@@ -19,8 +26,9 @@ import {
 import { Suggestion } from "@/components/ai-elements/suggestion";
 import { Loader } from "@/components/ai-elements/loader";
 import { StepPanel } from "@/components/step-panel";
-import { SessionPanel } from "@/components/session-panel";
+import { SessionPanel, useCountdown } from "@/components/session-panel";
 import { useChat } from "@/lib/use-chat";
+import { ChatExpiredError, getOtpLine } from "@/lib/api";
 import { config } from "@/lib/config";
 import type { Citation } from "@/lib/stream";
 import { cn } from "@/lib/utils";
@@ -80,14 +88,39 @@ export default function HomePage() {
     input,
     setInput,
     loading,
+    restoring,
+    restoreFailed,
+    notice,
+    incompleteNote,
     error,
     panel,
     panelReceivedAt,
     submit,
     stop,
     retry,
+    retryRestore,
+    recoverExpiredChat,
     newChat,
   } = useChat();
+
+  const conversationRef = useRef<StickToBottomContext | null>(null);
+  const wasRestoring = useRef(false);
+
+  // When a restore finishes, snap to the bottom without animation.
+  useEffect(() => {
+    if (wasRestoring.current && !restoring) {
+      window.requestAnimationFrame(() => {
+        conversationRef.current?.scrollToBottom("instant");
+      });
+    }
+    wasRestoring.current = restoring;
+  }, [restoring]);
+
+  const remaining = useCountdown(
+    panel.verified ? panelReceivedAt : null,
+    panel.verified ? panel.expires_in_seconds : null
+  );
+  const verificationExpired = remaining !== null && remaining <= 0;
 
   // Desktop opens the panel by default; the user's toggle overrides it.
   const derivedDefault = useSyncExternalStore(
@@ -109,6 +142,7 @@ export default function HomePage() {
   const lastMessage = messages[messages.length - 1];
   const lastStep = lastMessage?.steps[lastMessage.steps.length - 1];
   const showQuickReplies =
+    !restoring &&
     lastMessage?.role === "assistant" &&
     lastMessage.status !== "streaming" &&
     lastStep?.status === "awaiting";
@@ -126,25 +160,17 @@ export default function HomePage() {
       return;
     }
     try {
-      const res = await fetch(`${config.apiUrl}/chats/${chatId}/dev-otp`);
-      if (res.status === 404) {
-        setShowOtp(false);
-        setOtpLine("");
-        return;
-      }
-      const data = await res.json();
-      if (res.ok && "otp_line" in data) {
-        setOtpLine(data.otp_line);
-        setShowOtp(true);
-      } else {
-        setShowOtp(false);
-        setOtpLine("");
-      }
-    } catch {
+      const line = await getOtpLine(chatId);
+      setOtpLine(line);
+      setShowOtp(true);
+    } catch (e) {
       setShowOtp(false);
       setOtpLine("");
+      if (e instanceof ChatExpiredError) {
+        await recoverExpiredChat();
+      }
     }
-  }, [chatId, showOtp]);
+  }, [chatId, showOtp, recoverExpiredChat]);
 
   const handleQuickMessage = useCallback(
     (message: string) => {
@@ -204,14 +230,30 @@ export default function HomePage() {
           </div>
         </header>
 
-      <Conversation className="min-h-0 flex-1">
+      <Conversation
+        className="min-h-0 flex-1"
+        contextRef={conversationRef}
+        initial="instant"
+      >
         <ConversationContent
           className={cn(
             "mx-auto w-full max-w-3xl gap-5 px-4 py-6 pb-8 sm:px-6",
             messages.length === 0 && "min-h-full justify-center"
           )}
         >
-          {messages.length === 0 && (
+          {messages.length === 0 && restoring && (
+            <div
+              role="status"
+              className="flex flex-col items-center justify-center px-2 py-12 text-center"
+            >
+              <Loader size={18} />
+              <p className="mt-3 text-[14px] text-[var(--muted)]">
+                Restoring your chat…
+              </p>
+            </div>
+          )}
+
+          {messages.length === 0 && !restoring && (
             <div className="flex flex-col items-center justify-center px-2 py-12 text-center">
               <div
                 className="flex size-12 items-center justify-center rounded-[12px] bg-[var(--accent)] text-[21px] font-bold text-white"
@@ -232,7 +274,7 @@ export default function HomePage() {
                     key={suggestion}
                     suggestion={suggestion}
                     onClick={(value) => submit(value)}
-                    disabled={loading || !chatId}
+                    disabled={loading || restoring || !chatId}
                     className="h-auto min-h-11 w-full max-w-full justify-start whitespace-normal break-words rounded-full border-[var(--input-border)] bg-[var(--surface)] px-4 py-2 text-left text-[13px] font-normal leading-snug text-[var(--text)] hover:bg-[var(--avatar-bg)] hover:text-[var(--text)]"
                   />
                 ))}
@@ -298,7 +340,7 @@ export default function HomePage() {
                           <button
                             key={reply}
                             type="button"
-                            disabled={loading || !chatId}
+                            disabled={loading || restoring || !chatId}
                             onClick={() => handleQuickMessage(reply)}
                             className="inline-flex min-h-11 items-center rounded-full border border-[var(--input-border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--avatar-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9"
                           >
@@ -356,20 +398,56 @@ export default function HomePage() {
             </div>
           )}
 
+          {notice && (
+            <div
+              role="status"
+              className="mb-2 rounded-lg border border-[var(--border)] bg-[var(--avatar-bg)] px-3 py-2 text-[13px] leading-snug text-[var(--text)]"
+            >
+              {notice}
+            </div>
+          )}
+
+          {verificationExpired && (
+            <div
+              role="status"
+              className="mb-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[13px] leading-snug text-[var(--muted)]"
+            >
+              Your verification ended. This chat will clear when you send your
+              next message or refresh.
+            </div>
+          )}
+
+          {incompleteNote && (
+            <p className="mb-2 px-1 text-[12px] leading-snug text-[var(--muted)]">
+              This reply may be incomplete.
+            </p>
+          )}
+
           {error && (
             <div
               role="status"
               className="mb-2 flex items-start gap-2 rounded-lg border border-[var(--failed-border)] bg-[var(--failed-bg)] px-3 py-2 text-[13px] leading-snug text-[var(--failed-text)]"
             >
               <span className="min-w-0 flex-1">{error}</span>
-              {error.includes("expired") && (
+              {restoreFailed ? (
                 <button
                   type="button"
-                  onClick={handleNewChat}
-                  className="shrink-0 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  onClick={retryRestore}
+                  disabled={restoring}
+                  className="shrink-0 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-50"
                 >
-                  New chat
+                  Retry
                 </button>
+              ) : (
+                error.includes("expired") && (
+                  <button
+                    type="button"
+                    onClick={handleNewChat}
+                    className="shrink-0 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  >
+                    New chat
+                  </button>
+                )
               )}
             </div>
           )}
@@ -377,7 +455,9 @@ export default function HomePage() {
           <PromptInput
             className="composer"
             onSubmit={(message) => {
-              if (message.text.trim() && !loading) submit(message.text);
+              if (message.text.trim() && !loading && !restoring) {
+                submit(message.text);
+              }
             }}
           >
             <PromptInputTextarea
@@ -387,23 +467,25 @@ export default function HomePage() {
                 loading ? "Rubies is replying…" : "Message Rubies support"
               }
               aria-label="Message"
-              disabled={loading || !chatId}
+              disabled={loading || restoring || !chatId}
               className="max-h-[156px] min-h-11 flex-1 px-4 py-2.5 font-sans text-[15px] leading-[1.5] text-[var(--text)] placeholder:text-[var(--muted)]"
             />
             <PromptInputSubmit
-              status={loading && chatId ? "streaming" : "ready"}
+              status={loading && chatId && !restoring ? "streaming" : "ready"}
               onStop={stop}
-              disabled={!chatId || (!loading && !input.trim())}
+              disabled={
+                restoring || !chatId || (!loading && !input.trim())
+              }
               className={cn(
                 "size-11 shrink-0 rounded-full shadow-sm transition-colors disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-100",
-                loading && chatId
+                loading && chatId && !restoring
                   ? "bg-[var(--stop-bg)] text-[var(--stop-fg)] hover:bg-[var(--stop-bg)]"
                   : input.trim()
                     ? "bg-[var(--accent)] text-white hover:bg-[var(--accent)] hover:opacity-90"
                     : "bg-[var(--border)] text-[var(--muted)] hover:bg-[var(--border)]"
               )}
             >
-              {loading && chatId ? (
+              {loading && chatId && !restoring ? (
                 <span className="size-3 rounded-[2px] bg-[var(--stop-fg)]" />
               ) : (
                 <ArrowUp size={18} strokeWidth={2.5} />

@@ -244,6 +244,18 @@ class TestVerificationAndErrors:
         assert "SECRETTOKEN" not in raw
         assert "123456" not in raw
 
+    def test_invalid_phone_format_code_reaches_the_model(self, tmp_path):
+        runtime, session, gateway, _ = make_runtime(tmp_path)
+        gateway.errors["verify_start"] = BankRejected(
+            "bank API rejected the request", 422, "invalid_phone_format"
+        )
+        result = runtime.call("verify_customer", phone="not-a-phone")
+        assert result["error"] == "verification_failed"
+        # The agent-side client exposes the bank's error code as this message;
+        # the friendly body text is not forwarded (see report).
+        assert "invalid_phone_format" in result["message"]
+        assert session.failed_verifications == 1
+
     def test_wrong_otp_records_failed_verification(self, tmp_path):
         runtime, session, gateway, _ = make_runtime(tmp_path)
         gateway.errors["verify_complete"] = BankUnauthorized(

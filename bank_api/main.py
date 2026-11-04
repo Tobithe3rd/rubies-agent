@@ -15,12 +15,14 @@ from bank_api.service import BankService
 
 class RequestOTPBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    phone: str = Field(min_length=10, max_length=16, pattern=r"^\+?[0-9]{10,15}$")
+    # Format is validated after normalisation in AuthService so spaced and
+    # hyphenated input is accepted without weakening the phone pattern.
+    phone: str
 
 
 class VerifyBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    phone: str = Field(min_length=10, max_length=16, pattern=r"^\+?[0-9]{10,15}$")
+    phone: str
     code: str = Field(min_length=4, max_length=10, pattern=r"^[0-9]+$")
 
 
@@ -95,13 +97,24 @@ def create_app(config_dir: str = "config") -> FastAPI:
 
     # --- auth ---
 
+    def phone_error(result: dict):
+        return JSONResponse(
+            status_code=422,
+            content={"error": result["error"], "message": result["message"]},
+        )
+
     @app.post("/auth/request-otp")
     def request_otp(body: RequestOTPBody):
-        return app.state.auth.request_otp(body.phone)
+        result = app.state.auth.request_otp(body.phone)
+        if result.get("error") == "invalid_phone_format":
+            return phone_error(result)
+        return result
 
     @app.post("/auth/verify")
     def verify(body: VerifyBody):
         result = app.state.auth.verify_otp(body.phone, body.code)
+        if result.get("error") == "invalid_phone_format":
+            return phone_error(result)
         if result.get("ok"):
             return {"token": result["token"], "expires_at": result["expires_at"]}
         if result.get("error") == "otp_locked":

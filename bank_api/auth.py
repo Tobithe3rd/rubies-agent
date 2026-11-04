@@ -3,11 +3,18 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import datetime
 from typing import Callable, Optional
 
 from core.interfaces import DataStore, OTPSender
+
+
+INVALID_PHONE_MESSAGE = (
+    "Please enter a valid Nigerian mobile number, for example "
+    "+2348031234567 or 08031234567."
+)
 
 
 def _sha256_hex(value: str) -> str:
@@ -16,12 +23,14 @@ def _sha256_hex(value: str) -> str:
 
 def normalise_phone(phone: str) -> str:
     """Normalise a Nigerian phone number to +234XXXXXXXXXX form."""
-    digits = "".join(ch for ch in phone if ch.isdigit())
-    if digits.startswith("234"):
-        return "+" + digits
-    if digits.startswith("0"):
-        return "+234" + digits[1:]
-    return "+234" + digits
+    # Only presentation characters are removed; letters and other junk stay
+    # so validation rejects them.
+    cleaned = re.sub(r"[\s\-()]", "", phone or "")
+    if cleaned.startswith("0"):
+        return "+234" + cleaned[1:]
+    if cleaned.startswith("234"):
+        return "+" + cleaned
+    return cleaned
 
 
 class AuthService:
@@ -43,12 +52,24 @@ class AuthService:
         self.otp_ttl_seconds = bank.otp_ttl_seconds
         self.otp_max_attempts = bank.otp_max_attempts
         self.session_expiry_minutes = cfg.settings.session.expiry_minutes
+        self.phone_pattern = re.compile(bank.phone_pattern)
         self.secret = env.OTP_HASH_SECRET
 
     # --- internals ---
 
     def _now(self) -> datetime.datetime:
         return self._clock()
+
+    def _valid_phone(self, normalised: str) -> bool:
+        return self.phone_pattern.fullmatch(normalised) is not None
+
+    @staticmethod
+    def _invalid_phone() -> dict:
+        return {
+            "error": "invalid_phone_format",
+            "status": 422,
+            "message": INVALID_PHONE_MESSAGE,
+        }
 
     def _code_hash(self, phone: str, code: str) -> str:
         msg = f"{phone}:{code}".encode()
@@ -66,6 +87,8 @@ class AuthService:
 
     def request_otp(self, phone: str) -> dict:
         norm = normalise_phone(phone)
+        if not self._valid_phone(norm):
+            return self._invalid_phone()
         customer = self.ds.get_customer_by_phone(norm)
         if customer is not None:
             code = self._generate_code()
@@ -77,10 +100,15 @@ class AuthService:
         else:
             self._audit(None, None, "request_otp", {"phone": norm}, "unknown_phone")
         # Always the same generic result; never returns the code.
-        return {"status": "ok", "message": "If the number is registered, a code has been sent."}
+        return {
+            "status": "ok",
+            "message": "If that number is registered with Rubies, a code is on its way.",
+        }
 
     def verify_otp(self, phone: str, code: str) -> dict:
         norm = normalise_phone(phone)
+        if not self._valid_phone(norm):
+            return self._invalid_phone()
         otp = self.ds.get_latest_otp(norm)
         if otp is None:
             self._audit(None, None, "verify_otp", {"phone": norm}, "no_otp")

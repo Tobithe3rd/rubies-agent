@@ -56,13 +56,18 @@ fi
 
 # ------------------------------------------- d/e. protected files (agent layer)
 PROT_FILES=(agent/session.py agent/bank_client.py agent/errors.py agent/tool_runtime.py)
-# Chat 4 built these files, so vs chat3-done only modifications/deletions count;
-# vs chat4-done any change counts. tool_runtime.py is not touched by this step,
-# which is stronger than only checking its identity/confirmation functions.
+# Chat 4 built these files. Reviewed session/tool_runtime files may match their tag;
+# bank_client.py and errors.py stay strict against chat4-done.
 if git rev-parse -q --verify chat4-done >/dev/null 2>&1; then
-  if git diff --quiet chat4-done -- "${PROT_FILES[@]}" 2>/dev/null; then d_ok=1; else d_ok=0; fi
+  d_mod=""
+  for f in "${PROT_FILES[@]}"; do
+    [ -n "$(git diff --name-only chat4-done -- "$f" 2>/dev/null)" ] || continue
+    if { [ "$f" = agent/session.py ] || [ "$f" = agent/tool_runtime.py ]; } && _reviewed_exempt "$f"; then continue; fi
+    d_mod="$d_mod$f "
+  done
+  if [ -z "$d_mod" ]; then d_ok=1; else d_ok=0; fi
   check "d. identity/confirmation files unchanged since chat4-done" "$d_ok" \
-    "modified: $(git diff --name-only chat4-done -- "${PROT_FILES[@]}" 2>/dev/null | tr '\n' ' ')"
+    "modified: $d_mod"
 else
   skip "d. identity/confirmation files unchanged since chat4-done (no tag)"
 fi
@@ -74,9 +79,15 @@ fi
 if [ -z "${base3:-}" ]; then
   skip "e. identity/confirmation files unmodified since chat3-done (no base ref)"
 else
-  if git diff --quiet --diff-filter=MD "$base3" -- "${PROT_FILES[@]}" 2>/dev/null; then e_ok=1; else e_ok=0; fi
+  e_mod=""
+  for f in "${PROT_FILES[@]}"; do
+    [ -n "$(git diff --name-only --diff-filter=MD "$base3" -- "$f" 2>/dev/null)" ] || continue
+    if { [ "$f" = agent/session.py ] || [ "$f" = agent/tool_runtime.py ]; } && _reviewed_exempt "$f"; then continue; fi
+    e_mod="$e_mod$f "
+  done
+  if [ -z "$e_mod" ]; then e_ok=1; else e_ok=0; fi
   check "e. identity/confirmation files unmodified since ${base3}" "$e_ok" \
-    "modified: $(git diff --name-only --diff-filter=MD "$base3" -- "${PROT_FILES[@]}" 2>/dev/null | tr '\n' ' ')"
+    "modified: $e_mod"
 fi
 
 # ------------------------------------------------ f. manifest drift (shared lib)

@@ -9,11 +9,14 @@ declare -F skip  >/dev/null || skip()  { echo "SKIP: $1"; }
 # Strict: any modification or deletion fails, except reviewed files matching their tag.
 PROT_STRICT=(agent/session.py agent/bank_client.py agent/errors.py agent/tool_runtime.py)
 # Parallel arrays: each reviewed tag exempts the space-separated file list at the same index.
-PROT_REVIEWED_TAGS=(attachment-confirm-guard-reviewed phone-validation-reviewed)
+PROT_REVIEWED_TAGS=(affirmation-guard-reviewed phone-validation-reviewed)
 PROT_REVIEWED_FILES=(
   "agent/session.py agent/tool_runtime.py"
   "bank_api/auth.py bank_api/main.py"
 )
+# Pinned: must match this tag exactly, with no baseline alternative.
+PROT_PINNED_TAG="affirmation-guard-reviewed"
+PROT_PINNED=(agent/runner.py agent/affirmation.py)
 # Protected trees, minus planned exemptions (files with their own line-level rules are excluded here).
 PROT_TREES=(bank_api providers rag)
 SEED_REVIEWED_TAG="seed-fix-reviewed"   # reviewed seed fix; seed.py must match this tag exactly
@@ -57,6 +60,14 @@ protected_check() {
     out="$out$f "
   done
   if [ -n "$out" ]; then problems="$problems [strict] $out"; fi
+
+  out=""
+  for f in "${PROT_PINNED[@]}"; do
+    if git rev-parse -q --verify "$PROT_PINNED_TAG" >/dev/null 2>&1 \
+      && git diff --quiet "$PROT_PINNED_TAG" -- "$f"; then continue; fi
+    out="$out$f "
+  done
+  if [ -n "$out" ]; then problems="$problems [pinned] $out"; fi
 
   out=""
   for f in $(git diff --name-only "$base" -- "${PROT_TREES[@]}" "${PROT_EXEMPT[@]}"); do

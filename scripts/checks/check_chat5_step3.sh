@@ -47,9 +47,15 @@ check "b. scripts/checks/check_chat5_step2.sh passes" "$b_ok" "rc=${b_rc}; see /
 # --------------------------------- c/d. protected agent files vs both bases
 PROT_FILES=(agent/session.py agent/bank_client.py agent/errors.py agent/tool_runtime.py)
 if git rev-parse -q --verify chat4-done >/dev/null 2>&1; then
-  if git diff --quiet chat4-done -- "${PROT_FILES[@]}" 2>/dev/null; then c_ok=1; else c_ok=0; fi
+  c_mod=""
+  for f in "${PROT_FILES[@]}"; do
+    [ -n "$(git diff --name-only chat4-done -- "$f" 2>/dev/null)" ] || continue
+    if { [ "$f" = agent/session.py ] || [ "$f" = agent/tool_runtime.py ]; } && _reviewed_exempt "$f"; then continue; fi
+    c_mod="$c_mod$f "
+  done
+  if [ -z "$c_mod" ]; then c_ok=1; else c_ok=0; fi
   check "c. identity/confirmation files unchanged since chat4-done" "$c_ok" \
-    "modified: $(git diff --name-only chat4-done -- "${PROT_FILES[@]}" 2>/dev/null | tr '\n' ' ')"
+    "modified: $c_mod"
 else
   skip "c. identity/confirmation files unchanged since chat4-done (no tag)"
 fi
@@ -61,9 +67,15 @@ fi
 if [ -z "${base3:-}" ]; then
   skip "d. identity/confirmation files unmodified since chat3-done (no base ref)"
 else
-  if git diff --quiet --diff-filter=MD "$base3" -- "${PROT_FILES[@]}" 2>/dev/null; then d_ok=1; else d_ok=0; fi
+  d_mod=""
+  for f in "${PROT_FILES[@]}"; do
+    [ -n "$(git diff --name-only --diff-filter=MD "$base3" -- "$f" 2>/dev/null)" ] || continue
+    if { [ "$f" = agent/session.py ] || [ "$f" = agent/tool_runtime.py ]; } && _reviewed_exempt "$f"; then continue; fi
+    d_mod="$d_mod$f "
+  done
+  if [ -z "$d_mod" ]; then d_ok=1; else d_ok=0; fi
   check "d. identity/confirmation files unmodified since ${base3}" "$d_ok" \
-    "modified: $(git diff --name-only --diff-filter=MD "$base3" -- "${PROT_FILES[@]}" 2>/dev/null | tr '\n' ' ')"
+    "modified: $d_mod"
 fi
 
 # ------------------------------------------------ e. manifest drift (shared lib)

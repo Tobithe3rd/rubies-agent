@@ -75,6 +75,7 @@ def make_cfg(tmp_path, debug=False):
                 pending_token_prefix_chars=4,
             ),
             bank_api=SimpleNamespace(handoff_summary_max_chars=1000),
+            confirmation=SimpleNamespace(max_turns=2),
         )
     )
 
@@ -87,6 +88,7 @@ def make_tools():
             requires_verified_session=name
             not in {"verify_customer", "handoff_to_human", "search_policy"},
             blocked_on_attachment_turns=(name == "confirm_action"),
+            requires_affirmation=(name == "confirm_action"),
             description=name,
         )
         for name in TOOL_SPECS
@@ -193,7 +195,7 @@ class TestConfirmation:
         runtime, session, gateway, _ = make_runtime(tmp_path)
         session.set_verified("TOKEN", "A")
         session.register_pending("P1", "open_dispute")
-        session.start_turn()
+        session.start_turn(affirmed=True)
         gateway.responses["confirm_action"] = {"status": "dispute_opened"}
         result = runtime.call("confirm_action", pending_token="P1")
         assert result["ok"] is True
@@ -205,7 +207,7 @@ class TestConfirmation:
         runtime, session, gateway, _ = make_runtime(tmp_path)
         session.set_verified("TOKEN", "A")
         session.register_pending("P1", "open_dispute")
-        session.start_turn()
+        session.start_turn(affirmed=True)
         gateway.errors["confirm_action"] = BankRejected(
             "bank API rejected the request", 400, "invalid_or_expired"
         )
@@ -218,7 +220,7 @@ class TestConfirmation:
         runtime, session, gateway, _ = make_runtime(tmp_path)
         session.set_verified("TOKEN", "A")
         session.register_pending("P1", "open_dispute")
-        session.start_turn()
+        session.start_turn(affirmed=True)
         gateway.errors["confirm_action"] = BankUnavailable(
             "bank API unavailable", code="connection_error"
         )
@@ -253,7 +255,7 @@ class TestConfirmation:
             "confirmation_blocked_by_attachment")
         assert "P1" in session.pending
 
-        session.start_turn()
+        session.start_turn(affirmed=True)
         gateway.responses["confirm_action"] = {"status": "dispute_opened"}
         result = runtime.call("confirm_action", pending_token="P1")
 
@@ -301,6 +303,125 @@ class TestConfirmation:
         result = asyncio.run(run())[-1].tool_result
         envelope = result["content"][0]["json"]
         assert envelope["error"] == "confirmation_blocked_by_attachment"
+        assert gateway.calls == []
+        assert "P1" in session.pending
+
+
+    def test_not_affirmed_is_refused_and_keeps_pending(self, tmp_path):
+        runtime, session, gateway, logger = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn()
+
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["error"] == "confirmation_not_affirmed"
+        assert gateway.calls == []
+        assert "P1" in session.pending
+        assert session.tool_error_count == 0
+        payload = json.loads(log_lines(logger)[-1])
+        assert payload["error"]["code"] == "confirmation_not_affirmed"
+
+    def test_attachment_turn_takes_precedence_over_affirmation(self, tmp_path):
+        runtime, session, gateway, _ = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn(has_attachments=True, affirmed=True)
+        session.turn_affirmed = True
+
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["error"] == "confirmation_blocked_by_attachment"
+        assert gateway.calls == []
+        assert "P1" in session.pending
+
+    def test_confirmation_within_max_turns_still_executes(self, tmp_path):
+        runtime, session, gateway, _ = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn()
+        session.start_turn(affirmed=True)
+        gateway.responses["confirm_action"] = {"status": "dispute_opened"}
+
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["ok"] is True
+        assert session.pending == {}
+
+    def test_stale_pending_expires_and_is_cleared(self, tmp_path):
+        runtime, session, gateway, logger = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn()
+        session.start_turn()
+        session.start_turn(affirmed=True)
+
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["error"] == "confirmation_expired"
+        assert gateway.calls == []
+        assert session.pending == {}
+        assert session.tool_error_count == 0
+        payload = json.loads(log_lines(logger)[-1])
+        assert payload["error"]["code"] == "confirmation_expired"
+
+    def test_affirmation_flag_resets_on_the_next_turn(self, tmp_path):
+        runtime, session, gateway, _ = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn(affirmed=True)
+        assert session.turn_affirmed is True
+        session.start_turn()
+        assert session.turn_affirmed is False
+
+        result = runtime.call("confirm_action", pending_token="P1")
+
+        assert result["error"] == "confirmation_not_affirmed"
+        assert gateway.calls == []
+        assert "P1" in session.pending
+
+    def test_message_text_is_not_in_the_session_repr_or_jsonl(self, tmp_path):
+        phrase = "yes zanzibar-secret"
+        runtime, session, gateway, logger = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn(affirmed=True)
+        gateway.responses["confirm_action"] = {"status": "dispute_opened"}
+
+        assert runtime.call("confirm_action", pending_token="P1")["ok"] is True
+        assert phrase not in repr(session)
+        assert phrase not in logger.path.read_text(encoding="utf-8")
+
+    def test_not_affirmed_through_the_strands_tool_adapter(self, tmp_path):
+        runtime, session, gateway, logger = make_runtime(tmp_path)
+        session.set_verified("TOKEN", "A")
+        session.start_turn()
+        session.register_pending("P1", "open_dispute")
+        session.start_turn()
+        cfg = SimpleNamespace(
+            tools=make_tools(),
+            settings=SimpleNamespace(
+                agent=SimpleNamespace(max_tool_calls_per_turn=8)),
+        )
+        tools, _ = build_strands_tools(cfg, runtime, logger)
+        confirm = next(tool for tool in tools if tool.tool_name == "confirm_action")
+        tool_use = {
+            "toolUseId": "1", "name": "confirm_action",
+            "input": {"pending_token": "P1"},
+        }
+
+        async def run():
+            return [event async for event in confirm.stream(tool_use, {})]
+
+        result = asyncio.run(run())[-1].tool_result
+        envelope = result["content"][0]["json"]
+        assert envelope["error"] == "confirmation_not_affirmed"
         assert gateway.calls == []
         assert "P1" in session.pending
 

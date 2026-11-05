@@ -1,8 +1,18 @@
+from pathlib import Path
 from types import SimpleNamespace
+
+import yaml
 
 from agent.runner import EMPTY_MESSAGE_REPLY, AgentRunner
 from agent.session import SessionState
 from providers.llm.mock import ScriptedLLM
+
+
+def _confirmation():
+    data = yaml.safe_load(
+        Path("config/settings.yaml").read_text(encoding="utf-8")
+    )["confirmation"]
+    return SimpleNamespace(**data)
 
 
 class RecordingLogger:
@@ -39,7 +49,8 @@ def make_cfg(tmp_path, prompt="SYSTEM PROMPT", max_history=40, max_tools=8, fall
                 model_retries=model_retries,
                 retry_backoff_seconds=retry_backoff,
                 network_error_message=network_message,
-            )
+            ),
+            confirmation=_confirmation(),
         ),
         tools={},
     )
@@ -237,6 +248,29 @@ def test_stream_attachment_flag_is_passed_through_and_reset(tmp_path):
     assert runtime.session.turn_has_attachments is True
     asyncio.run(consume("no file now"))
     assert runtime.session.turn_has_attachments is False
+
+
+def test_setup_turn_stores_only_the_affirmation_flag(tmp_path):
+    runner, runtime, _ = make_runner(
+        tmp_path,
+        [[("text", "a")], [("text", "b")], [("text", "c")], [("text", "d")]],
+    )
+    runner.handle_message("yes")
+    assert runtime.session.turn_affirmed is True
+    runner.handle_message("ok thanks")
+    assert runtime.session.turn_affirmed is False
+    runner.handle_message("yes abeg")
+    assert runtime.session.turn_affirmed is True
+    runner.handle_message("yes", has_attachments=True)
+    assert runtime.session.turn_affirmed is False
+
+
+def test_message_text_is_not_stored_on_the_session_or_logged(tmp_path):
+    phrase = "yes zanzibar-secret"
+    runner, runtime, _ = make_runner(tmp_path, [[("text", "done")]])
+    runner.handle_message(phrase)
+    assert phrase not in repr(runtime.session)
+    assert phrase not in str(runtime.logger.lines)
 
 
 def test_history_is_capped_by_the_conversation_manager(tmp_path):

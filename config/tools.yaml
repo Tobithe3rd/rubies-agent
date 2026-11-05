@@ -116,6 +116,7 @@ confirm_action:
   requires_confirmation: false
   requires_verified_session: true
   blocked_on_attachment_turns: true
+  requires_affirmation: true
   description: "Execute the dispute or card block that the customer confirmed in their latest message."
   labels:
     running: "Completing your request…"

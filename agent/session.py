@@ -22,6 +22,7 @@ class SessionState:
     customer_name: Optional[str] = None
     turn: int = 0
     turn_has_attachments: bool = False
+    turn_affirmed: bool = False
     pending: dict = field(default_factory=dict)
     failed_retrievals: int = 0
     consecutive_failed_retrievals: int = 0
@@ -34,10 +35,11 @@ class SessionState:
     def verified(self) -> bool:
         return self.token is not None
 
-    def start_turn(self, has_attachments: bool = False) -> int:
+    def start_turn(self, has_attachments: bool = False, affirmed: bool = False) -> int:
         """Called once per incoming user message, before it is handled."""
         self.turn += 1
         self.turn_has_attachments = bool(has_attachments)
+        self.turn_affirmed = bool(affirmed) and not self.turn_has_attachments
         return self.turn
 
     # --- two-step confirmation ---

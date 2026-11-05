@@ -29,6 +29,21 @@ def test_attachment_flag_is_set_and_reset_each_turn():
     assert s.turn_has_attachments is False
 
 
+def test_affirmation_flag_is_stored_and_reset_each_turn():
+    s = SessionState()
+    assert s.turn_affirmed is False
+    s.start_turn(affirmed=True)
+    assert s.turn_affirmed is True
+    s.start_turn()
+    assert s.turn_affirmed is False
+
+
+def test_attachment_turn_never_carries_affirmation():
+    s = SessionState()
+    s.start_turn(has_attachments=True, affirmed=True)
+    assert s.turn_affirmed is False
+
+
 def test_retrieval_counters_total_vs_consecutive():
     s = SessionState()
     s.record_retrieval("no_relevant_result")

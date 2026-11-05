@@ -66,6 +66,16 @@ session:
   expiry_minutes: 15
   max_failed_verifications: 3
 
+confirmation:
+  max_turns: 2
+  max_tokens: 8
+  reject_digits: true
+  filler_words: ["pls", "plz", "please", "abeg", "o", "oh", "sha", "sef", "thanks", "thank", "you", "ma", "sir"]
+  affirmative_words: ["yes", "yeah", "yep", "yup", "confirm", "confirmed", "sure", "proceed", "correct", "definitely", "absolutely"]
+  affirmative_phrases: ["go ahead", "do it", "do am", "block it", "block am", "dispute it", "confirm am", "na so", "i confirm"]
+  negative_words: ["no", "not", "dont", "stop", "cancel", "wait", "abort", "nope", "never", "cant", "wont", "refuse", "decline", "hold", "later", "but", "if", "unless", "except", "instead", "only", "however", "cannot", "shouldnt", "didnt", "isnt", "wouldnt", "nah", "wrong", "mistake", "incorrect", "different", "another"]
+  negative_phrases: ["no be", "no do", "no gree", "do not", "not now", "not yet", "hold on", "leave it", "forget it", "change am", "changed my mind"]
+
 handoff:
   max_repeated_tool_errors: 3
   max_failed_retrievals: 2

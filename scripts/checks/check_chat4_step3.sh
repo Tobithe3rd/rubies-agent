@@ -296,7 +296,7 @@ try:
     after_prop = dispute_count("RUB-DB-002")
     same = call(bola_rt, "confirm_action", pending_token=pending)
     after_same = dispute_count("RUB-DB-002")
-    bola_session.start_turn()
+    bola_session.start_turn(affirmed=True)
     conf = call(bola_rt, "confirm_action", pending_token=pending)
     after_conf = dispute_count("RUB-DB-002")
     again = call(bola_rt, "confirm_action", pending_token=pending)
@@ -327,7 +327,7 @@ try:
     pending_g = (prop_g.get("data") or {}).get("pending_token")
     after_prop = card_status(adebayo, "0001")
     same_g = call(g_rt, "confirm_action", pending_token=pending_g)
-    g_session.start_turn()
+    g_session.start_turn(affirmed=True)
     conf_g = call(g_rt, "confirm_action", pending_token=pending_g)
     after_conf = card_status(adebayo, "0001")
     g_ok = (

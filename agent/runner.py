@@ -5,6 +5,7 @@ import sys
 import time
 from typing import Any
 
+from agent.affirmation import is_affirmation
 from agent.prompts import load_system_prompt
 from agent.strands_tools import build_strands_tools
 
@@ -92,7 +93,13 @@ class AgentRunner:
         # Pre-turn setup: once per non-empty message. Returns False for empty.
         if text is None or not str(text).strip():
             return False
-        self.session.start_turn(has_attachments=has_attachments)
+        self.session.start_turn(
+            has_attachments=has_attachments,
+            affirmed=(
+                not has_attachments
+                and is_affirmation(text, self.config.settings.confirmation)
+            ),
+        )
         self.counter.reset()
         return True
 

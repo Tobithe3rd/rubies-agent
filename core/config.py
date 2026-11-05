@@ -201,6 +201,57 @@ class SessionConfig(BaseModel):
     max_failed_verifications: int = Field(ge=0)
 
 
+class ConfirmationConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+    max_turns: int = Field(ge=1)
+    max_tokens: int = Field(ge=1)
+    reject_digits: bool = Field(strict=True)
+    filler_words: list[str] = Field(min_length=1)
+    affirmative_words: list[str] = Field(min_length=1)
+    affirmative_phrases: list[str] = Field(min_length=1)
+    negative_words: list[str] = Field(min_length=1)
+    negative_phrases: list[str] = Field(min_length=1)
+
+    @field_validator(
+        "filler_words",
+        "affirmative_words",
+        "affirmative_phrases",
+        "negative_words",
+        "negative_phrases",
+    )
+    @classmethod
+    def normalise_entries(cls, v: list[str]) -> list[str]:
+        normalised: list[str] = []
+        for item in v:
+            if not item or not item.strip():
+                raise ValueError("must not contain blank entries")
+            words = re.sub(r"[^\w\s]", " ", item.lower()).split()
+            if not words:
+                raise ValueError("must not contain blank entries")
+            normalised.append(" ".join(words))
+        return normalised
+
+    @model_validator(mode="after")
+    def no_affirmative_negative_overlap(self):
+        affirmative = (
+            ("affirmative_words", self.affirmative_words),
+            ("affirmative_phrases", self.affirmative_phrases),
+        )
+        negative = (
+            ("negative_words", self.negative_words),
+            ("negative_phrases", self.negative_phrases),
+        )
+        overlaps = [
+            f"{aff_name} and {neg_name} both contain {entry!r}"
+            for aff_name, aff_items in affirmative
+            for neg_name, neg_items in negative
+            for entry in set(aff_items) & set(neg_items)
+        ]
+        if overlaps:
+            raise ValueError("confirmation lists overlap: " + "; ".join(overlaps))
+        return self
+
+
 class HandoffConfig(BaseModel):
     model_config = {"extra": "forbid"}
     max_repeated_tool_errors: int = Field(ge=1)
@@ -422,6 +473,7 @@ class Settings(BaseModel):
     vectorstore: VectorstoreConfig
     rag: RAGConfig
     session: SessionConfig
+    confirmation: ConfirmationConfig
     handoff: HandoffConfig
     logging: LoggingConfig
     adapter: AdapterConfig
@@ -525,6 +577,7 @@ class ToolConfig(BaseModel):
     requires_confirmation: bool
     requires_verified_session: bool
     blocked_on_attachment_turns: bool = False
+    requires_affirmation: bool = False
     description: str
     labels: Optional[ToolLabels] = None
     receipt: Optional[ReceiptConfig] = None

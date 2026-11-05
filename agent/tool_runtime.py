@@ -43,6 +43,7 @@ class ToolRuntime:
         self.logger = logger
         self.clock = clock or getattr(logger, "clock", None) or create_clock(config)
         self.debug = bool(config.settings.logging.debug)
+        self.confirmation = config.settings.confirmation
         self.handoff_summary_max_chars = int(
             config.settings.bank_api.handoff_summary_max_chars
         )
@@ -205,6 +206,25 @@ class ToolRuntime:
             return self._error(
                 "confirm_action", "confirmation_not_allowed",
                 "confirmation is not allowed", data={"reason": reason},
+            )
+        if (
+            getattr(self.tools_cfg.get("confirm_action"), "requires_affirmation", False)
+            and not self.session.turn_affirmed
+        ):
+            return self._error(
+                "confirm_action",
+                "confirmation_not_affirmed",
+                "The customer's current message is not a clear yes. Ask them to "
+                "reply with a clear yes, or no to cancel, in a new message.",
+            )
+        entry = self.session.pending[pending]
+        if self.session.turn - entry["proposed_turn"] > self.confirmation.max_turns:
+            self.session.consume_pending(pending)
+            return self._error(
+                "confirm_action",
+                "confirmation_expired",
+                "That confirmation has expired. Ask the customer if they still "
+                "want this action, then propose it again.",
             )
         try:
             response = self.gateway.confirm_action(self.session.token, pending)

@@ -6,14 +6,34 @@
 declare -F check >/dev/null || check() { if [ "$2" = 1 ]; then echo "PASS: $1"; else echo "FAIL: $1${3:+ ($3)}"; fi; }
 declare -F skip  >/dev/null || skip()  { echo "SKIP: $1"; }
 
-# Strict: any modification or deletion fails, except reviewed files matching the tag.
+# Strict: any modification or deletion fails, except reviewed files matching their tag.
 PROT_STRICT=(agent/session.py agent/bank_client.py agent/errors.py agent/tool_runtime.py)
-STRICT_REVIEWED_TAG="attachment-confirm-guard-reviewed"
-STRICT_REVIEWED_FILES=(agent/session.py agent/tool_runtime.py)
+# Parallel arrays: each reviewed tag exempts the space-separated file list at the same index.
+PROT_REVIEWED_TAGS=(attachment-confirm-guard-reviewed phone-validation-reviewed)
+PROT_REVIEWED_FILES=(
+  "agent/session.py agent/tool_runtime.py"
+  "bank_api/auth.py bank_api/main.py"
+)
 # Protected trees, minus planned exemptions (files with their own line-level rules are excluded here).
 PROT_TREES=(bank_api providers rag)
 SEED_REVIEWED_TAG="seed-fix-reviewed"   # reviewed seed fix; seed.py must match this tag exactly
 PROT_EXEMPT=(':(exclude)providers/llm' ':(exclude)rag/query_rewrite.py' ':(exclude)rag/threshold_report.py' ':(exclude)rag/README.md' ':(exclude)bank_api/seed.py' ':(exclude)rag/calibrate.py' ':(exclude)rag/analyze_dev_set.py')
+
+# True when <file> is byte-identical to the reviewed tag that lists it.
+_reviewed_exempt() {
+  local f="$1" i tag files
+  for i in "${!PROT_REVIEWED_TAGS[@]}"; do
+    tag="${PROT_REVIEWED_TAGS[$i]}"
+    for files in ${PROT_REVIEWED_FILES[$i]}; do
+      if [ "$files" = "$f" ]; then
+        git rev-parse -q --verify "$tag" >/dev/null 2>&1 \
+          && git diff --quiet "$tag" -- "$f"
+        return
+      fi
+    done
+  done
+  return 1
+}
 
 # Changed lines of <file> since <base> that do NOT match the allowed regex.
 _bad_lines() {
@@ -33,16 +53,16 @@ protected_check() {
   out=""
   for f in "${PROT_STRICT[@]}"; do
     if [ -z "$(git diff --name-only --diff-filter=MD "$base" -- "$f")" ]; then continue; fi
-    if [[ " ${STRICT_REVIEWED_FILES[*]} " == *" $f "* ]] \
-      && git rev-parse -q --verify "$STRICT_REVIEWED_TAG" >/dev/null 2>&1 \
-      && git diff --quiet "$STRICT_REVIEWED_TAG" -- "$f"; then
-      continue
-    fi
+    if _reviewed_exempt "$f"; then continue; fi
     out="$out$f "
   done
   if [ -n "$out" ]; then problems="$problems [strict] $out"; fi
 
-  out=$(git diff --name-only "$base" -- "${PROT_TREES[@]}" "${PROT_EXEMPT[@]}" | tr '\n' ' ')
+  out=""
+  for f in $(git diff --name-only "$base" -- "${PROT_TREES[@]}" "${PROT_EXEMPT[@]}"); do
+    if _reviewed_exempt "$f"; then continue; fi
+    out="$out$f "
+  done
   if [ -n "$out" ]; then problems="$problems [protected tree] $out"; fi
 
   # seed.py: manifest-path-only changes since $base, OR byte-identical to the reviewed seed fix.

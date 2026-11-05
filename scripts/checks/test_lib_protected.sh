@@ -12,6 +12,7 @@ mk_repo() {
   git init -q
   mkdir -p agent bank_api rag providers/llm
   for f in session bank_client errors tool_runtime; do echo "$f v1" > "agent/$f.py"; done
+  for f in auth main service; do echo "$f v1" > "bank_api/$f.py"; done
   printf 'with open("data/seed_manifest.md", "w") as f:\n    pass\nPHONE = "+2348031234567"\n' > bank_api/seed.py
   printf 'OUTPUT_PATH = "data/rag_calibration.json"\nx = 1\n' > rag/calibrate.py
   printf 'DEFAULT_REPORT = "data/rag_threshold_report.json"\ny = 1\n' > rag/analyze_dev_set.py
@@ -51,6 +52,19 @@ commit_strict_reviewed() {
   git -c user.name=t -c user.email=t@t commit -q -m strict-review
   git tag attachment-confirm-guard-reviewed
 }
+c_reviewed_auth() { echo "auth v2" > bank_api/auth.py; commit_phone_reviewed; }
+c_reviewed_main() { echo "main v2" > bank_api/main.py; commit_phone_reviewed; }
+c_reviewed_auth_changed_after_tag() {
+  echo "auth v2" > bank_api/auth.py; commit_phone_reviewed
+  echo "auth v3" > bank_api/auth.py
+}
+c_reviewed_auth_without_tag() { echo "auth v2" > bank_api/auth.py; }
+c_non_reviewed_bank_file() { echo "service v2" > bank_api/service.py; }
+commit_phone_reviewed() {
+  git add -A
+  git -c user.name=t -c user.email=t@t commit -q -m phone-review
+  git tag phone-validation-reviewed
+}
 c_search()     { echo "search v2" > rag/search.py; }
 c_exempt_new() { echo new > rag/query_rewrite.py; echo m > providers/llm/bedrock.py; git add -A; }
 c_new_tree()   { echo x > rag/other.py; git add -A; }
@@ -71,6 +85,11 @@ run_case "reviewed tool_runtime.py matches the tag" PASS c_reviewed_runtime
 run_case "reviewed session.py changed again after the tag" FAIL c_reviewed_session_changed_after_tag
 run_case "reviewed session.py changed with the tag absent" FAIL c_reviewed_session_without_tag
 run_case "reviewed session.py matches but unrelated strict file changed" FAIL c_reviewed_session_but_unrelated_strict_changed
+run_case "reviewed bank_api/auth.py matches the tag" PASS c_reviewed_auth
+run_case "reviewed bank_api/main.py matches the tag" PASS c_reviewed_main
+run_case "reviewed bank_api file changed again after the tag" FAIL c_reviewed_auth_changed_after_tag
+run_case "reviewed bank_api file changed with the tag absent" FAIL c_reviewed_auth_without_tag
+run_case "non-reviewed protected bank_api file changed" FAIL c_non_reviewed_bank_file
 run_case "rag/search.py modified"              FAIL c_search
 run_case "new exempt files (query_rewrite, providers/llm)" PASS c_exempt_new
 run_case "new non-exempt file in rag/"         FAIL c_new_tree

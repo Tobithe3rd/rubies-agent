@@ -497,11 +497,11 @@ try:
         print(f"INFO: unexpected factory error: {type(exc).__name__}: {exc}")
     shutil.rmtree(bad_prompt_dir, ignore_errors=True)
 
-    # (iv) additions only: no removed lines from chat4-done
-    base="chat4-done"
+    # (iv) additions only: no removed lines from phone-validation-reviewed
+    base="phone-validation-reviewed"
     import subprocess
     diff_output = subprocess.run(
-        ["git", "diff", "chat4-done", "--", "prompts/system_prompt.md"],
+        ["git", "diff", base, "--", "prompts/system_prompt.md"],
         capture_output=True, text=True
     ).stdout
     removed_lines = [l for l in diff_output.splitlines() if l.startswith("-") and not l.startswith("---")]

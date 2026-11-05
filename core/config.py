@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 from pathlib import Path
 from string import Formatter
 from typing import Any, Optional
@@ -252,11 +253,69 @@ class ConfirmationConfig(BaseModel):
         return self
 
 
+def _normalised_words(value: str) -> list[str]:
+    text = "".join(
+        ch for ch in unicodedata.normalize("NFKD", str(value or ""))
+        if not unicodedata.combining(ch)
+    )
+    text = text.replace("'", "").replace("’", "")
+    return re.sub(r"[^\w\s]", " ", text.lower()).split()
+
+
 class HandoffConfig(BaseModel):
     model_config = {"extra": "forbid"}
     max_repeated_tool_errors: int = Field(ge=1)
     max_failed_retrievals: int = Field(ge=1)
     max_failed_verifications: int = Field(ge=1)
+    ignore_words: list[str]
+    request_negative_words: list[str]
+    request_negative_phrases: list[str]
+    request_phrases_en: list[str]
+    request_phrases_pidgin: list[str]
+    pidgin_markers: list[str]
+    summary_prompt_path: str
+    summary_max_tokens: int = Field(ge=1, le=512)
+    summary_timeout_seconds: float = Field(gt=0)
+
+    @field_validator(
+        "ignore_words",
+        "request_negative_words",
+        "request_negative_phrases",
+        "request_phrases_en",
+        "request_phrases_pidgin",
+        "pidgin_markers",
+    )
+    @classmethod
+    def no_blank_entries(cls, v: list[str], info) -> list[str]:
+        key = f"handoff.{info.field_name}"
+        if any(not item or not item.strip() for item in v):
+            raise ValueError(f"{key} must not contain blank entries")
+        return v
+
+    @field_validator("summary_prompt_path")
+    @classmethod
+    def summary_path_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("handoff.summary_prompt_path must not be empty")
+        return v
+
+    @model_validator(mode="after")
+    def phrases_survive_ignore_words(self):
+        ignored = set(self.ignore_words)
+        for key in (
+            "request_negative_phrases",
+            "request_phrases_en",
+            "request_phrases_pidgin",
+            "pidgin_markers",
+        ):
+            for entry in getattr(self, key):
+                words = [w for w in _normalised_words(entry) if w not in ignored]
+                if not words:
+                    raise ValueError(
+                        f"handoff.{key} entry {entry!r} is empty "
+                        "after ignore_words are removed"
+                    )
+        return self
 
 
 class LoggingConfig(BaseModel):

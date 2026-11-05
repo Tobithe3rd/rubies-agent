@@ -124,6 +124,46 @@ class TestToolLoggingAndHandoffConfig:
             load_config(config_dir=str(cfg_dir))
         assert "max_failed_verifications" in str(exc.value)
 
+    def test_blank_handoff_phrase_names_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            '  request_phrases_en:\n    - "talk to human"',
+            '  request_phrases_en:\n    - ""',
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "request_phrases_en" in str(exc.value)
+
+    def test_handoff_phrase_empty_after_ignore_words_names_the_key(
+        self, tmp_path, monkeypatch
+    ):
+        _set_env(monkeypatch)
+        cfg_dir = _config_copy(tmp_path)
+        _edit(
+            cfg_dir / "settings.yaml",
+            '  request_phrases_en:\n    - "talk to human"',
+            '  request_phrases_en:\n    - "the"',
+        )
+        with pytest.raises(ConfigError) as exc:
+            load_config(config_dir=str(cfg_dir))
+        assert "request_phrases_en" in str(exc.value)
+        assert "ignore_words" in str(exc.value)
+
+    def test_handoff_summary_limits_fail_naming_the_key(self, tmp_path, monkeypatch):
+        _set_env(monkeypatch)
+        for old, new, key in (
+            ("summary_max_tokens: 160", "summary_max_tokens: 0", "summary_max_tokens"),
+            ("summary_timeout_seconds: 20", "summary_timeout_seconds: 0", "summary_timeout_seconds"),
+        ):
+            cfg_dir = tmp_path / key
+            shutil.copytree("config", cfg_dir)
+            _edit(cfg_dir / "settings.yaml", old, new)
+            with pytest.raises(ConfigError) as exc:
+                load_config(config_dir=str(cfg_dir))
+            assert key in str(exc.value)
+
 
 class TestToolsSchema:
     def test_real_tools_yaml_is_the_eleven_tool_contract(self, monkeypatch):
